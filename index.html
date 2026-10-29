@@ -37,15 +37,17 @@
             </div>
             
             <div id="navActionButtons" class="flex items-center space-x-3">
-                <!-- Các nút chức năng sẽ được tự động ẩn/hiện tùy theo phân quyền (role) -->
+                <!-- Nút Xuất Excel (Chỉ Admin thấy) -->
                 <button id="btnExcel" onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center hidden">
                     <i class="fa-solid fa-file-excel mr-1.5"></i> Xuất Excel
                 </button>
 
+                <!-- Nút Chuyển Giao Diện Bếp / Menu (Admin thấy) -->
                 <button id="btnViewToggle" onclick="toggleView()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition hidden">
                     <i class="fa-solid fa-kitchen-set mr-1"></i> Vào Bếp
                 </button>
                 
+                <!-- Nút Giỏ Hàng (Khách & Admin thấy) -->
                 <button id="cartBtn" onclick="toggleCartModal(true)" class="relative bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-xl transition">
                     <i class="fa-solid fa-cart-shopping"></i>
                     <span id="cartBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
@@ -80,7 +82,7 @@
         <div id="menuGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
     </div>
 
-    <!-- GIAO DIỆN NHÀ BẾP & QUẢN LÝ / ADMIN -->
+    <!-- GIAO DIỆN NHÀ BẾP & QUẢN LÝ -->
     <div id="kitchenView" class="max-w-7xl mx-auto px-4 py-6 hidden">
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-clipboard-list mr-2 text-orange-500"></i> Quản Lý Bếp & Doanh Thu</h2>
@@ -91,7 +93,6 @@
             </div>
         </div>
 
-        <!-- Thẻ Thống Kê Doanh Thu & Đơn Hàng -->
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                 <span class="text-gray-500 text-sm">Đơn chờ nấu</span>
@@ -141,9 +142,11 @@
                         <span>Tổng cộng:</span>
                         <span id="cartTotal" class="text-orange-600">0 đ</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 pt-2">
-                        <button onclick="checkoutOrder()" class="bg-orange-500 hover:bg-orange-600 text-white py-2.5 rounded-xl font-bold transition text-xs shadow-md">Gửi Đơn Xuống Bếp</button>
-                        <button onclick="openPaymentQRModal()" class="bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold transition text-xs shadow-md flex items-center justify-center"><i class="fa-solid fa-qrcode mr-1"></i> Thanh Toán QR</button>
+                    <!-- CHỈ HIỂN THỊ NÚT THANH TOÁN (ĐÃ LOẠI BỎ NÚT GỬI ĐƠN XUỐNG BẾP) -->
+                    <div class="pt-2">
+                        <button onclick="openPaymentQRModal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition text-sm shadow-md flex items-center justify-center">
+                            <i class="fa-solid fa-qrcode mr-2"></i> Thanh Toán (Quét Mã QR)
+                        </button>
                     </div>
                 </div>
             </div>
@@ -193,7 +196,10 @@
                 </div>
             </div>
             <div class="p-4 bg-gray-50 border-t flex space-x-2 no-print">
-                <button onclick="printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold transition text-sm flex items-center justify-center shadow-md"><i class="fa-solid fa-print mr-1.5"></i> In Hóa Đơn</button>
+                <!-- NÚT IN HÓA ĐƠN (CHỈ ADMIN THẤY) -->
+                <button id="btnPrintInvoice" onclick="printInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-bold transition text-sm flex items-center justify-center shadow-md hidden">
+                    <i class="fa-solid fa-print mr-1.5"></i> In Hóa Đơn
+                </button>
                 <button onclick="togglePaymentModal(false)" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-bold transition text-sm">Đóng</button>
                 <button onclick="confirmPaymentSuccess()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition text-sm shadow-lg">Xác Nhận Đã Thanh Toán</button>
             </div>
@@ -226,7 +232,6 @@
         };
 
         document.addEventListener("DOMContentLoaded", () => {
-            // Đọc quyền từ URL (?role=customer | kitchen | admin)
             const urlParams = new URLSearchParams(window.location.search);
             state.userRole = urlParams.get('role') || 'customer';
 
@@ -242,27 +247,28 @@
             const btnExcel = document.getElementById("btnExcel");
             const btnViewToggle = document.getElementById("btnViewToggle");
             const cartBtn = document.getElementById("cartBtn");
+            const btnPrintInvoice = document.getElementById("btnPrintInvoice");
 
             if (state.userRole === 'customer') {
-                // Khách hàng: Chỉ thấy giỏ hàng và menu, ẩn hết công cụ quản lý
                 btnExcel.classList.add("hidden");
                 btnViewToggle.classList.add("hidden");
                 cartBtn.classList.remove("hidden");
+                btnPrintInvoice.classList.add("hidden"); // Khách không thấy nút in hóa đơn
             } else if (state.userRole === 'kitchen') {
-                // Nhà bếp: Vào thẳng giao diện bếp, ẩn giỏ hàng khách và nút Excel
                 btnExcel.classList.add("hidden");
                 btnViewToggle.classList.add("hidden");
                 cartBtn.classList.add("hidden");
+                btnPrintInvoice.classList.add("hidden");
                 
                 document.getElementById("customerView").classList.add("hidden");
                 document.getElementById("kitchenView").classList.remove("hidden");
                 state.currentView = "kitchen";
                 renderKitchenOrders();
             } else if (state.userRole === 'admin') {
-                // Quản lý (Admin): Thấy toàn bộ tính năng + Thống kê doanh thu + Xuất Excel + Vào bếp
                 btnExcel.classList.remove("hidden");
                 btnViewToggle.classList.remove("hidden");
                 cartBtn.classList.remove("hidden");
+                btnPrintInvoice.classList.remove("hidden"); // Admin/Thu ngân thấy nút in hóa đơn
             }
         }
 
@@ -385,7 +391,7 @@
 
         function toggleCartModal(show) {
             const modal = document.getElementById("cartModal");
-            if (show) { modal.classList.remove("hidden"); } else { modal.classList.add("hidden"); }
+            if (show) modal.classList.remove("hidden"); else modal.classList.add("hidden");
         }
 
         // --- ĐỒNG BỘ DỮ LIỆU GOOGLE SHEETS ---
@@ -402,33 +408,6 @@
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
             .catch(err => console.error("Lỗi đồng bộ Google Sheets:", err));
-        }
-
-        function checkoutOrder() {
-            if (state.cart.length === 0) return;
-            let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
-            let tax = subtotal * 0.08;
-
-            const newOrder = {
-                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
-                table: state.currentTable,
-                items: [...state.cart],
-                subtotal: subtotal,
-                tax: tax,
-                total: subtotal + tax,
-                status: "pending",
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                date: new Date().toLocaleDateString('vi-VN')
-            };
-
-            state.orders.push(newOrder);
-            state.orderHistory.push(newOrder);
-            sendOrderToGoogleSheet(newOrder);
-
-            state.cart = [];
-            toggleCartModal(false);
-            updateCartUI();
-            alert("Đặt món thành công! Bếp đã nhận đơn.");
         }
 
         function openPaymentQRModal() {
@@ -478,11 +457,12 @@
         function printInvoice() { window.print(); }
 
         function confirmPaymentSuccess() {
+            if (state.cart.length === 0) return;
             let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
             let tax = subtotal * 0.08;
 
             const paidOrder = {
-                id: "HD-" + Math.floor(1000 + Math.random() * 9000),
+                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
                 table: state.currentTable,
                 items: [...state.cart],
                 subtotal: subtotal,
@@ -492,10 +472,13 @@
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 date: new Date().toLocaleDateString('vi-VN')
             };
+
+            // Đồng thời đẩy đơn hàng xuống bếp và lưu lịch sử doanh thu
+            state.orders.push(paidOrder);
             state.orderHistory.push(paidOrder);
             sendOrderToGoogleSheet(paidOrder);
 
-            alert(`Thanh toán thành công cho ${state.currentTable}!`);
+            alert(`Thanh toán thành công cho ${state.currentTable}! Đã gửi đơn xuống bếp và lưu doanh thu.`);
             state.cart = [];
             updateCartUI();
             togglePaymentModal(false);
@@ -541,7 +524,6 @@
             }
         }
 
-        // --- TÍNH TOÁN VÀ RENDER THỐNG KÊ DOANH THU & BẾP ---
         function renderKitchenOrders() {
             const container = document.getElementById("kitchenOrdersList");
             container.innerHTML = "";
@@ -561,7 +543,6 @@
                 }
             });
 
-            // Cập nhật lên Dashboard thống kê
             document.getElementById("statPending").innerText = pendingCount;
             document.getElementById("statCooking").innerText = cookingCount;
             document.getElementById("statServed").innerText = servedCount;
@@ -583,7 +564,7 @@
                     actionBtn = `<button onclick="updateOrderStatus(${index}, 'served')" class="w-full bg-green-500 hover:bg-green-600 text-white text-xs py-2 rounded-lg font-medium transition">Hoàn Tất / Phục Vụ</button>`;
                 } else {
                     statusBadge = `<span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">Đã lên món</span>`;
-                    actionBtn = `<button onclick="updateOrderStatus(${index}, 'done')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2 rounded-lg font-medium transition">Thanh Toán & Xóa</button>`;
+                    actionBtn = `<button onclick="updateOrderStatus(${index}, 'done')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-2 rounded-lg font-medium transition">Hoàn Tất & Xóa Đơn</button>`;
                 }
 
                 const card = document.createElement("div");
