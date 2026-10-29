@@ -87,8 +87,19 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-clipboard-list mr-2 text-orange-500"></i> Quản Lý Bếp & Doanh Thu</h2>
             <div class="flex space-x-2">
-                <button onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center">
+                <button onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center shadow-sm">
                     <i class="fa-solid fa-download mr-1"></i> Tải Báo Cáo Excel
+                </button>
+            </div>
+        </div>
+
+        <!-- Khung Tra Cứu & In Lại Hóa Đơn Cũ -->
+        <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-6">
+            <h3 class="font-bold text-gray-800 mb-3 text-sm"><i class="fa-solid fa-receipt text-orange-500 mr-2"></i> Tra Cứu & In Lại Hóa Đơn Cũ (Từ Google Sheets)</h3>
+            <div class="flex gap-2">
+                <input type="text" id="searchOrderIdInput" placeholder="Nhập mã đơn hàng (Ví dụ: ORD-1234)..." class="flex-1 border border-gray-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <button onclick="fetchAndPrintOldInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-sm whitespace-nowrap">
+                    <i class="fa-solid fa-print mr-1.5"></i> Tìm & In Lại
                 </button>
             </div>
         </div>
@@ -142,7 +153,6 @@
                         <span>Tổng cộng:</span>
                         <span id="cartTotal" class="text-orange-600">0 đ</span>
                     </div>
-                    <!-- CHỈ HIỂN THỊ NÚT THANH TOÁN (ĐÃ LOẠI BỎ NÚT GỬI ĐƠN XUỐNG BẾP) -->
                     <div class="pt-2">
                         <button onclick="openPaymentQRModal()" class="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-bold transition text-sm shadow-md flex items-center justify-center">
                             <i class="fa-solid fa-qrcode mr-2"></i> Thanh Toán (Quét Mã QR)
@@ -210,7 +220,6 @@
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_z3_T0acgQ2WOARxgSS9TrWCCtA1SVbC-E3J5OMrXKTB5gR_cicq7aCE1_cK2Q8DW4g/exec";
 
-
         const menuItems = [
             { id: 1, name: "Phở Bò Đặc Biệt", category: "main", price: 65000, image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&auto=format&fit=crop&q=60", description: "Thịt bò tái, gân, nạm tươi ngon cùng nước dùng hầm xương 24h." },
             { id: 2, name: "Cơm Sườn Bì Chả", category: "main", price: 55000, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&auto=format&fit=crop&q=60", description: "Sườn nướng mật ong thơm phức kèm bì chả truyền thống." },
@@ -254,7 +263,7 @@
                 btnExcel.classList.add("hidden");
                 btnViewToggle.classList.add("hidden");
                 cartBtn.classList.remove("hidden");
-                btnPrintInvoice.classList.add("hidden"); // Khách không thấy nút in hóa đơn
+                btnPrintInvoice.classList.add("hidden");
             } else if (state.userRole === 'kitchen') {
                 btnExcel.classList.add("hidden");
                 btnViewToggle.classList.add("hidden");
@@ -269,7 +278,7 @@
                 btnExcel.classList.remove("hidden");
                 btnViewToggle.classList.remove("hidden");
                 cartBtn.classList.remove("hidden");
-                btnPrintInvoice.classList.remove("hidden"); // Admin/Thu ngân thấy nút in hóa đơn
+                btnPrintInvoice.classList.remove("hidden");
             }
         }
 
@@ -417,7 +426,7 @@
             let tax = subtotal * 0.08;
             let total = subtotal + tax;
 
-            let invoiceId = "HD-" + Math.floor(1000 + Math.random() * 9000);
+            let invoiceId = "ORD-" + Math.floor(1000 + Math.random() * 9000);
             let currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             document.getElementById("payTableInfo").innerText = state.currentTable;
@@ -443,6 +452,10 @@
                 tableBody.appendChild(tr);
             });
 
+            // Hiện lại QR nếu trước đó bị ẩn do tính năng in lại hóa đơn
+            const qrImgParent = document.getElementById("vietQRImage").parentElement.parentElement;
+            if(qrImgParent) qrImgParent.style.display = "block";
+
             let qrUrl = `https://img.vietqr.io/image/MB-190019999999-compact2.png?amount=${Math.round(total)}&addInfo=Thanh%20toan%20${state.currentTable}&accountName=NHA%20HANG%20HUONG%20SEN`;
             document.getElementById("vietQRImage").src = qrUrl;
 
@@ -457,47 +470,106 @@
 
         function printInvoice() { window.print(); }
 
-       	function confirmPaymentSuccess() {
-    if (state.cart.length === 0) {
-        alert("Giỏ hàng trống!");
-        return;
-    }
-    
-    let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
-    let tax = subtotal * 0.08;
+        function confirmPaymentSuccess() {
+            if (state.cart.length === 0) return;
+            let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
+            let tax = subtotal * 0.08;
 
-    const paidOrder = {
-        id: "HD-" + Math.floor(1000 + Math.random() * 9000),
-        table: state.currentTable,
-        items: [...state.cart],
-        subtotal: subtotal,
-        tax: tax,
-        total: subtotal + tax,
-        status: "paid", // Đánh dấu trạng thái đã thanh toán
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        date: new Date().toLocaleDateString('vi-VN')
-    };
+            const paidOrder = {
+                id: document.getElementById("payInvoiceId").innerText || ("ORD-" + Math.floor(1000 + Math.random() * 9000)),
+                table: state.currentTable,
+                items: [...state.cart],
+                subtotal: subtotal,
+                tax: tax,
+                total: subtotal + tax,
+                status: "paid",
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                date: new Date().toLocaleDateString('vi-VN')
+            };
 
-    // 1. Thêm vào danh sách chờ của bếp (nếu bếp cần thấy đơn thanh toán)
-    state.orders.push(paidOrder);
-    
-    // 2. Lưu vào lịch sử doanh thu của Admin
-    state.orderHistory.push(paidOrder);
+            state.orders.push(paidOrder);
+            state.orderHistory.push(paidOrder);
+            sendOrderToGoogleSheet(paidOrder);
 
-    // 3. BẮT BUỘC PHẢI GỌI HÀM NÀY ĐỂ ĐẨY LÊN GOOGLE SHEETS
-    sendOrderToGoogleSheet(paidOrder);
+            alert(`Thanh toán thành công cho ${state.currentTable}! Đã gửi đơn xuống bếp và lưu doanh thu.`);
+            state.cart = [];
+            updateCartUI();
+            togglePaymentModal(false);
+            if(state.currentView === 'kitchen') renderKitchenOrders();
+        }
 
-    alert(`Xác nhận thanh toán thành công cho ${state.currentTable}! Dữ liệu đã được đẩy lên Google Sheets.`);
-    
-    // Làm sạch giỏ hàng và đóng modal
-    state.cart = [];
-    updateCartUI();
-    togglePaymentModal(false);
-}
+        // --- TRA CỨU & IN LẠI HÓA ĐƠN CŨ TỪ GOOGLE SHEETS ---
+        function fetchAndPrintOldInvoice() {
+            let searchId = document.getElementById("searchOrderIdInput").value.trim();
+            if (!searchId) {
+                alert("Vui lòng nhập mã đơn hàng cần tìm!");
+                return;
+            }
 
+            alert("Đang kết nối lấy dữ liệu từ Google Sheets...");
+
+            fetch(GOOGLE_SCRIPT_URL)
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === "success") {
+                    let allRows = result.data;
+                    let matchedRows = allRows.filter(r => r.orderId.toLowerCase() === searchId.toLowerCase());
+                    
+                    if (matchedRows.length === 0) {
+                        alert("Không tìm thấy mã đơn hàng: " + searchId);
+                        return;
+                    }
+
+                    let firstRow = matchedRows[0];
+                    let itemsList = matchedRows.map(r => ({
+                        item: { name: r.itemName, price: r.price },
+                        quantity: r.quantity
+                    }));
+
+                    let subtotal = matchedRows.reduce((sum, r) => sum + (r.price * r.quantity), 0);
+                    let tax = subtotal * 0.08;
+                    let total = subtotal + tax;
+
+                    document.getElementById("payTableInfo").innerText = firstRow.table;
+                    document.getElementById("payInvoiceId").innerText = firstRow.orderId;
+                    document.getElementById("payTime").innerText = firstRow.time + " - " + firstRow.date;
+                    document.getElementById("paySubtotal").innerText = subtotal.toLocaleString() + " đ";
+                    document.getElementById("payTax").innerText = tax.toLocaleString() + " đ";
+                    document.getElementById("payTotal").innerText = total.toLocaleString() + " đ";
+                    document.getElementById("payTransferContent").innerText = `TT ${firstRow.table}`;
+
+                    const tableBody = document.getElementById("payTableBody");
+                    tableBody.innerHTML = "";
+                    itemsList.forEach((cartItem, index) => {
+                        let thanhTien = cartItem.item.price * cartItem.quantity;
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                            <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
+                            <td class="p-2.5 text-center">${cartItem.quantity}</td>
+                            <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
+                            <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+
+                    // Ẩn mã QR đi vì hóa đơn này đã cũ/đã thanh toán
+                    const qrImgParent = document.getElementById("vietQRImage").parentElement.parentElement;
+                    if(qrImgParent) qrImgParent.style.display = "none";
+
+                    document.getElementById("paymentModal").classList.remove("hidden");
+                } else {
+                    alert("Lỗi khi đọc dữ liệu từ Google Sheet: " + result.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Không thể kết nối đến Google Sheets. Vui lòng kiểm tra lại đường dẫn Script URL!");
+            });
+        }
 
         function exportOrdersToExcel() {
-            if (state.orderHistory.length === 0) { alert("Chưa có dữ liệu đơn hàng!"); return; }
+            if (state.orderHistory.length === 0) { alert("Chưa có dữ liệu đơn hàng trong phiên làm việc này!"); return; }
             const excelData = [];
             state.orderHistory.forEach(order => {
                 order.items.forEach(cartItem => {
