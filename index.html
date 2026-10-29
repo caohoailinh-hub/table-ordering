@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Order Quán ăn KaoLin</title>
+    <title>Hệ Thống Order Nhà Hàng Hương Sen</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -31,12 +31,17 @@
             <div class="flex items-center space-x-3">
                 <span class="bg-orange-500 text-white p-2 rounded-xl font-bold"><i class="fa-solid fa-utensils"></i></span>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">Quán ăn KaoLin</h1>
+                    <h1 class="font-bold text-lg leading-tight">Nhà Hàng Hương Sen</h1>
                     <span id="currentTableDisplay" class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Bàn 01</span>
                 </div>
             </div>
             
             <div id="navActionButtons" class="flex items-center space-x-3">
+                <!-- Nút Quản Lý Thực Đơn (Chỉ Admin thấy) -->
+                <button id="btnMenuManager" onclick="toggleMenuManagerModal(true)" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center hidden">
+                    <i class="fa-solid fa-burger mr-1.5"></i> Quản Lý Thực Đơn
+                </button>
+
                 <!-- Nút Xuất Excel (Chỉ Admin thấy) -->
                 <button id="btnExcel" onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center hidden">
                     <i class="fa-solid fa-file-excel mr-1.5"></i> Xuất Excel
@@ -169,7 +174,7 @@
         <div id="printableInvoice" class="relative bg-white w-full max-w-xl rounded-3xl shadow-2xl z-10 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-orange-500 text-white p-5 text-center relative">
                 <button onclick="togglePaymentModal(false)" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 no-print"><i class="fa-solid fa-xmark text-xl"></i></button>
-                <h3 class="text-xl font-bold uppercase tracking-wider">Hóa Đơn Quán ăn KaoLin</h3>
+                <h3 class="text-xl font-bold uppercase tracking-wider">Hóa Đơn Nhà Hàng Hương Sen</h3>
                 <p id="payTableInfo" class="text-sm opacity-90 mt-1">Bàn 01</p>
             </div>
             <div class="p-6 overflow-y-auto space-y-4 flex-1">
@@ -216,11 +221,45 @@
         </div>
     </div>
 
+    <!-- MODAL QUẢN LÝ THỰC ĐƠN (THÊM / XÓA MÓN) -->
+    <div id="menuManagerModal" class="fixed inset-0 z-50 overflow-hidden hidden flex items-center justify-center px-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="toggleMenuManagerModal(false)"></div>
+        <div class="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl z-10 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-purple-600 text-white p-5 flex justify-between items-center">
+                <h3 class="text-lg font-bold"><i class="fa-solid fa-burger mr-2"></i> Thêm & Quản Lý Món Ăn</h3>
+                <button onclick="toggleMenuManagerModal(false)" class="text-white/80 hover:text-white p-2"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-6 flex-1">
+                <div class="bg-gray-50 p-4 rounded-2xl border border-gray-200 space-y-3">
+                    <h4 class="font-bold text-sm text-gray-700"><i class="fa-solid fa-plus-circle text-purple-600 mr-1"></i> Thêm Món Ăn Mới</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <input type="text" id="newDishName" placeholder="Tên món ăn..." class="border px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+                        <select id="newDishCategory" class="border px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+                            <option value="main">Món chính</option>
+                            <option value="appetizer">Khai vị</option>
+                            <option value="drink">Đồ uống</option>
+                            <option value="dessert">Tráng miệng</option>
+                        </select>
+                        <input type="number" id="newDishPrice" placeholder="Giá tiền (đ)..." class="border px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+                        <input type="text" id="newDishImage" placeholder="Link hình ảnh (URL)..." class="border px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-purple-500">
+                    </div>
+                    <textarea id="newDishDesc" placeholder="Mô tả ngắn về món ăn..." class="w-full border px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-purple-500" rows="2"></textarea>
+                    <button onclick="addNewDish()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 rounded-xl text-sm font-bold transition shadow-sm">Lưu & Thêm Món Vào Menu</button>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-sm text-gray-700 mb-3"><i class="fa-solid fa-list text-purple-600 mr-1"></i> Danh Sách Món Hiện Tại (Bấm để xóa)</h4>
+                    <div id="manageDishList" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- LOGIC JAVASCRIPT -->
     <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_z3_T0acgQ2WOARxgSS9TrWCCtA1SVbC-E3J5OMrXKTB5gR_cicq7aCE1_cK2Q8DW4g/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIP3o6IB-XIEVCBsZulk-33AR_AnsJNJ6uRtB2SqOv-DgY-AtX9XAjKNQkPOlahmBD/exec";
 
-        const menuItems = [
+        let menuItems = [
             { id: 1, name: "Phở Bò Đặc Biệt", category: "main", price: 65000, image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&auto=format&fit=crop&q=60", description: "Thịt bò tái, gân, nạm tươi ngon cùng nước dùng hầm xương 24h." },
             { id: 2, name: "Cơm Sườn Bì Chả", category: "main", price: 55000, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&auto=format&fit=crop&q=60", description: "Sườn nướng mật ong thơm phức kèm bì chả truyền thống." },
             { id: 3, name: "Gỏi Cuốn Tôm Thịt", category: "appetizer", price: 40000, image: "https://images.unsplash.com/photo-1541658016709-82535e94bc69?w=500&auto=format&fit=crop&q=60", description: "Cuốn tươi gồm tôm, thịt luộc, bún và rau sống chấm mắm nêm." },
@@ -258,27 +297,31 @@
             const btnViewToggle = document.getElementById("btnViewToggle");
             const cartBtn = document.getElementById("cartBtn");
             const btnPrintInvoice = document.getElementById("btnPrintInvoice");
+            const btnMenuManager = document.getElementById("btnMenuManager");
 
             if (state.userRole === 'customer') {
-                btnExcel.classList.add("hidden");
-                btnViewToggle.classList.add("hidden");
-                cartBtn.classList.remove("hidden");
-                btnPrintInvoice.classList.add("hidden");
+                if(btnExcel) btnExcel.classList.add("hidden");
+                if(btnViewToggle) btnViewToggle.classList.add("hidden");
+                if(cartBtn) cartBtn.classList.remove("hidden");
+                if(btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
+                if(btnMenuManager) btnMenuManager.classList.add("hidden");
             } else if (state.userRole === 'kitchen') {
-                btnExcel.classList.add("hidden");
-                btnViewToggle.classList.add("hidden");
-                cartBtn.classList.add("hidden");
-                btnPrintInvoice.classList.add("hidden");
+                if(btnExcel) btnExcel.classList.add("hidden");
+                if(btnViewToggle) btnViewToggle.classList.add("hidden");
+                if(cartBtn) cartBtn.classList.add("hidden");
+                if(btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
+                if(btnMenuManager) btnMenuManager.classList.add("hidden");
                 
                 document.getElementById("customerView").classList.add("hidden");
                 document.getElementById("kitchenView").classList.remove("hidden");
                 state.currentView = "kitchen";
                 renderKitchenOrders();
             } else if (state.userRole === 'admin') {
-                btnExcel.classList.remove("hidden");
-                btnViewToggle.classList.remove("hidden");
-                cartBtn.classList.remove("hidden");
-                btnPrintInvoice.classList.remove("hidden");
+                if(btnExcel) btnExcel.classList.remove("hidden");
+                if(btnViewToggle) btnViewToggle.classList.remove("hidden");
+                if(cartBtn) cartBtn.classList.remove("hidden");
+                if(btnPrintInvoice) btnPrintInvoice.classList.remove("hidden");
+                if(btnMenuManager) btnMenuManager.classList.remove("hidden");
             }
         }
 
@@ -452,7 +495,6 @@
                 tableBody.appendChild(tr);
             });
 
-            // Hiện lại QR nếu trước đó bị ẩn do tính năng in lại hóa đơn
             const qrImgParent = document.getElementById("vietQRImage").parentElement.parentElement;
             if(qrImgParent) qrImgParent.style.display = "block";
 
@@ -553,7 +595,6 @@
                         tableBody.appendChild(tr);
                     });
 
-                    // Ẩn mã QR đi vì hóa đơn này đã cũ/đã thanh toán
                     const qrImgParent = document.getElementById("vietQRImage").parentElement.parentElement;
                     if(qrImgParent) qrImgParent.style.display = "none";
 
@@ -568,23 +609,178 @@
             });
         }
 
-        function exportOrdersToExcel() {
-            if (state.orderHistory.length === 0) { alert("Chưa có dữ liệu đơn hàng trong phiên làm việc này!"); return; }
+        // --- QUẢN LÝ THỰC ĐƠN (THÊM / XÓA MÓN) ---
+        function toggleMenuManagerModal(show) {
+            const modal = document.getElementById("menuManagerModal");
+            if (show) {
+                modal.classList.remove("hidden");
+                renderManageDishList();
+            } else {
+                modal.classList.add("hidden");
+            }
+        }
+
+        function renderManageDishList() {
+            const container = document.getElementById("manageDishList");
+            container.innerHTML = "";
+
+            if (menuItems.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Chưa có món ăn nào trong thực đơn.</p>`;
+                return;
+            }
+
+            menuItems.forEach((item) => {
+                const div = document.createElement("div");
+                div.className = "flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200 shadow-sm";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-lg">
+                        <div>
+                            <h5 class="font-bold text-sm text-gray-800">${item.name}</h5>
+                            <span class="text-xs text-orange-600 font-medium">${item.price.toLocaleString()} đ</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteDish(${item.id})" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        <i class="fa-solid fa-trash mr-1"></i> Xóa
+                    </button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addNewDish() {
+            const name = document.getElementById("newDishName").value.trim();
+            const category = document.getElementById("newDishCategory").value;
+            const price = parseFloat(document.getElementById("newDishPrice").value);
+            let image = document.getElementById("newDishImage").value.trim();
+            const description = document.getElementById("newDishDesc").value.trim();
+
+            if (!name || isNaN(price) || price <= 0) {
+                alert("Vui lòng nhập tên món và giá tiền hợp lệ!");
+                return;
+            }
+
+            if (!image) {
+                image = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop&q=60";
+            }
+
+            const newId = menuItems.length > 0 ? Math.max(...menuItems.map(i => i.id)) + 1 : 1;
+
+            const newItem = {
+                id: newId,
+                name: name,
+                category: category,
+                price: price,
+                image: image,
+                description: description || "Món ăn ngon hấp dẫn tại nhà hàng."
+            };
+
+            menuItems.push(newItem);
+
+            document.getElementById("newDishName").value = "";
+            document.getElementById("newDishPrice").value = "";
+            document.getElementById("newDishImage").value = "";
+            document.getElementById("newDishDesc").value = "";
+
+            alert("Thêm món ăn thành công!");
+            renderManageDishList();
+            renderMenu();
+        }
+
+        function deleteDish(itemId) {
+            if (confirm("Bạn có chắc chắn muốn xóa món này khỏi thực đơn không?")) {
+                menuItems = menuItems.filter(i => i.id !== itemId);
+                renderManageDishList();
+                renderMenu();
+            }
+        }
+
+        // --- XUẤT BÁO CÁO EXCEL TỪ GOOGLE SHEETS THEO THỜI GIAN ---
+function exportOrdersToExcel() {
+    alert("Đang kết nối lấy toàn bộ dữ liệu từ Google Sheets để lập báo cáo...");
+
+    fetch(GOOGLE_SCRIPT_URL)
+    .then(response => response.json())
+    .then(result => {
+        if (result.status === "success") {
+            let allRows = result.data;
+            
+            if (allRows.length === 0) {
+                alert("Chưa có dữ liệu đơn hàng nào trên Google Sheets!");
+                return;
+            }
+
+            // Mở hộp thoại nhỏ hỏi người dùng muốn lọc theo khoảng thời gian nào (Có thể bỏ trống để xuất tất cả)
+            let fromDateStr = prompt("Nhập từ ngày (Định dạng DD/MM/YYYY, ví dụ: 01/10/2026) - Bỏ trống nếu lấy tất cả:", "");
+            if (fromDateStr === null) return; // Người dùng bấm Hủy
+            
+            let toDateStr = prompt("Nhập đến ngày (Định dạng DD/MM/YYYY, ví dụ: 31/10/2026) - Bỏ trống nếu lấy tất cả:", "");
+            if (toDateStr === null) return;
+
+            // Lọc dữ liệu theo ngày nếu người dùng có nhập
+            let filteredRows = allRows;
+            if (fromDateStr.trim() !== "" || toDateStr.trim() !== "") {
+                filteredRows = allRows.filter(r => {
+                    // r.date có định dạng DD/MM/YYYY từ Google Sheets
+                    let orderDateParts = r.date.split("/");
+                    if (orderDateParts.length !== 3) return true;
+                    let orderDateObj = new Date(orderDateParts[2], orderDateParts[1] - 1, orderDateParts[0]);
+
+                    let isValid = true;
+                    if (fromDateStr.trim() !== "") {
+                        let fromParts = fromDateStr.trim().split("/");
+                        let fromDateObj = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
+                        if (orderDateObj < fromDateObj) isValid = false;
+                    }
+                    if (toDateStr.trim() !== "") {
+                        let toParts = toDateStr.trim().split("/");
+                        let toDateObj = new Date(toParts[2], toParts[1] - 1, toParts[0]);
+                        if (orderDateObj > toDateObj) isValid = false;
+                    }
+                    return isValid;
+                });
+            }
+
+            if (filteredRows.length === 0) {
+                alert("Không có đơn hàng nào trong khoảng thời gian bạn đã chọn!");
+                return;
+            }
+
+            // Chuẩn bị dữ liệu đưa vào file Excel
             const excelData = [];
-            state.orderHistory.forEach(order => {
-                order.items.forEach(cartItem => {
-                    excelData.push({
-                        "Ngày đặt": order.date, "Thời gian": order.time, "Mã Đơn Hàng": order.id, "Bàn": order.table,
-                        "Tên Món": cartItem.item.name, "Số Lượng": cartItem.quantity, "Đơn Giá (đ)": cartItem.item.price,
-                        "Thành Tiền (đ)": cartItem.item.price * cartItem.quantity, "Trạng Thái": order.status === 'paid' ? 'Đã thanh toán' : 'Chờ xử lý'
-                    });
+            filteredRows.forEach(r => {
+                excelData.push({
+                    "Ngày đặt": r.date,
+                    "Thời gian": r.time,
+                    "Mã Đơn Hàng": r.orderId,
+                    "Bàn": r.table,
+                    "Tên Món": r.itemName,
+                    "Số Lượng": r.quantity,
+                    "Đơn Giá (đ)": r.price,
+                    "Thành Tiền (đ)": r.price * r.quantity,
+                    "Trạng Thái": r.status
                 });
             });
+
+            // Sử dụng thư viện SheetJS để tạo và tải file Excel
             const worksheet = XLSX.utils.json_to_sheet(excelData);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDonHang");
-            XLSX.writeFile(workbook, `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDoanhThu");
+            
+            let fileName = `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            
+            alert(`Xuất báo cáo thành công ${filteredRows.length} dòng dữ liệu!`);
+
+        } else {
+            alert("Lỗi khi đọc dữ liệu từ Google Sheet: " + result.message);
         }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Không thể kết nối đến Google Sheets. Vui lòng kiểm tra lại đường dẫn Script URL!");
+    });
+}
 
         function toggleView() {
             const customerView = document.getElementById("customerView");
