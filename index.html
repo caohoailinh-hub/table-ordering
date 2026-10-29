@@ -208,7 +208,8 @@
 
     <!-- LOGIC JAVASCRIPT -->
     <script>
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxIP3o6IB-XIEVCBsZulk-33AR_AnsJNJ6uRtB2SqOv-DgY-AtX9XAjKNQkPOlahmBD/exec";
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_z3_T0acgQ2WOARxgSS9TrWCCtA1SVbC-E3J5OMrXKTB5gR_cicq7aCE1_cK2Q8DW4g/exec";
+
 
         const menuItems = [
             { id: 1, name: "Phở Bò Đặc Biệt", category: "main", price: 65000, image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500&auto=format&fit=crop&q=60", description: "Thịt bò tái, gân, nạm tươi ngon cùng nước dùng hầm xương 24h." },
@@ -456,33 +457,44 @@
 
         function printInvoice() { window.print(); }
 
-        function confirmPaymentSuccess() {
-            if (state.cart.length === 0) return;
-            let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
-            let tax = subtotal * 0.08;
+       	function confirmPaymentSuccess() {
+    if (state.cart.length === 0) {
+        alert("Giỏ hàng trống!");
+        return;
+    }
+    
+    let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
+    let tax = subtotal * 0.08;
 
-            const paidOrder = {
-                id: "ORD-" + Math.floor(1000 + Math.random() * 9000),
-                table: state.currentTable,
-                items: [...state.cart],
-                subtotal: subtotal,
-                tax: tax,
-                total: subtotal + tax,
-                status: "paid",
-                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                date: new Date().toLocaleDateString('vi-VN')
-            };
+    const paidOrder = {
+        id: "HD-" + Math.floor(1000 + Math.random() * 9000),
+        table: state.currentTable,
+        items: [...state.cart],
+        subtotal: subtotal,
+        tax: tax,
+        total: subtotal + tax,
+        status: "paid", // Đánh dấu trạng thái đã thanh toán
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: new Date().toLocaleDateString('vi-VN')
+    };
 
-            // Đồng thời đẩy đơn hàng xuống bếp và lưu lịch sử doanh thu
-            state.orders.push(paidOrder);
-            state.orderHistory.push(paidOrder);
-            sendOrderToGoogleSheet(paidOrder);
+    // 1. Thêm vào danh sách chờ của bếp (nếu bếp cần thấy đơn thanh toán)
+    state.orders.push(paidOrder);
+    
+    // 2. Lưu vào lịch sử doanh thu của Admin
+    state.orderHistory.push(paidOrder);
 
-            alert(`Thanh toán thành công cho ${state.currentTable}! Đã gửi đơn xuống bếp và lưu doanh thu.`);
-            state.cart = [];
-            updateCartUI();
-            togglePaymentModal(false);
-        }
+    // 3. BẮT BUỘC PHẢI GỌI HÀM NÀY ĐỂ ĐẨY LÊN GOOGLE SHEETS
+    sendOrderToGoogleSheet(paidOrder);
+
+    alert(`Xác nhận thanh toán thành công cho ${state.currentTable}! Dữ liệu đã được đẩy lên Google Sheets.`);
+    
+    // Làm sạch giỏ hàng và đóng modal
+    state.cart = [];
+    updateCartUI();
+    togglePaymentModal(false);
+}
+
 
         function exportOrdersToExcel() {
             if (state.orderHistory.length === 0) { alert("Chưa có dữ liệu đơn hàng!"); return; }
