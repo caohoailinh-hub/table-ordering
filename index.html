@@ -504,7 +504,12 @@
         // --- ĐỒNG BỘ ĐƠN HÀNG (BAO GỒM TÊN & SĐT) LÊN GOOGLE SHEETS ---
         function sendOrderToGoogleSheet(orderData) {
             if (!GOOGLE_SCRIPT_URL) return;
-            let itemsArray = orderData.items.map(i => ({ name: i.item.name, quantity: i.quantity, price: i.item.price }));
+            let itemsArray = orderData.items.map(i => ({ 
+                name: i.item.name, 
+                quantity: i.quantity, 
+                price: i.item.price,
+                thanhTien: i.quantity * i.item.price // Bổ sung tính thành tiền cho từng món
+            }));
             const formData = new URLSearchParams();
             formData.append("action", "saveOrder");
             formData.append("date", orderData.date);
@@ -514,7 +519,7 @@
             formData.append("customerName", orderData.customerName);
             formData.append("customerPhone", orderData.customerPhone);
             formData.append("itemsJson", JSON.stringify(itemsArray));
-            formData.append("status", orderData.status === 'paid' ? 'Đã đặt hàng' : 'Chờ xử lý');
+            formData.append("status", orderData.status === 'paid' ? 'Đặt hàng thành công' : 'Chờ xử lý');
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
             .catch(err => console.error("Lỗi đồng bộ Google Sheets:", err));
