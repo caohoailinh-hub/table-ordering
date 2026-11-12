@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Order - Kaolin Quán</title>
+    <title>Hệ Thống Order - Kaolin Dessert</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -14,12 +14,28 @@
     <!-- CSS RIÊNG CHO CHẾ ĐỘ IN ẤN (PRINT) -->
     <style>
         @media print {
-            body * { visibility: hidden; }
-            #printableInvoice, #printableInvoice * { visibility: visible; }
-            #printableInvoice {
-                position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 10px; box-shadow: none; background: white;
+            body * {
+                visibility: hidden;
             }
-            .no-print { display: none !important; }
+
+            #printableInvoice, #printableInvoice * {
+                visibility: visible;
+            }
+
+            #printableInvoice {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 10px;
+                box-shadow: none;
+                background: white;
+            }
+
+            .no-print {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -27,16 +43,16 @@
 
     <!-- 1. Thanh điều hướng (Navbar) -->
     <header class="bg-white shadow-sm sticky top-0 z-40 no-print">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-2">
             <div class="flex items-center space-x-3">
                 <span class="bg-orange-500 text-white p-2 rounded-xl font-bold"><i class="fa-solid fa-utensils"></i></span>
                 <div>
-                    <h1 class="font-bold text-lg leading-tight">Kaolin Quán</h1>
-                    <span id="currentTableDisplay" class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Bàn 01</span>
+                    <h1 class="font-bold text-lg leading-tight">Kaolin Dessert</h1>
+                    <span id="currentTableDisplay" class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">Take away 01</span>
                 </div>
             </div>
-            
-            <div id="navActionButtons" class="flex items-center space-x-3">
+
+            <div id="navActionButtons" class="flex items-center space-x-2 sm:space-x-3">
                 <!-- Nút Quản Lý Thực Đơn (Chỉ Admin thấy) -->
                 <button id="btnMenuManager" onclick="toggleMenuManagerModal(true)" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition shadow-sm flex items-center hidden">
                     <i class="fa-solid fa-burger mr-1.5"></i> Quản Lý Thực Đơn
@@ -51,8 +67,16 @@
                 <button id="btnViewToggle" onclick="toggleView()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium transition hidden">
                     <i class="fa-solid fa-kitchen-set mr-1"></i> Vào Bếp
                 </button>
-                
-                <!-- Nút Giỏ Hàng (Khách & Admin thấy) -->
+
+                <!-- Khung Tra Cứu Đơn Hàng trên Navbar -->
+                <div class="flex gap-1.5">
+                    <input type="text" id="navSearchOrderInput" placeholder="Mã đơn (ORD-1234)..." class="w-36 sm:w-52 border border-gray-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                    <button onclick="fetchAndPrintOldInvoice('navSearchOrderInput')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-sm whitespace-nowrap">
+                        <i class="fa-solid fa-magnifying-glass sm:mr-1.5"></i> <span class="hidden sm:inline">Tra cứu</span>
+                    </button>
+                </div>
+
+                <!-- Nút Giỏ Hàng -->
                 <button id="cartBtn" onclick="toggleCartModal(true)" class="relative bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-xl transition">
                     <i class="fa-solid fa-cart-shopping"></i>
                     <span id="cartBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold hidden">0</span>
@@ -69,10 +93,10 @@
                 <input type="text" id="searchInput" oninput="handleSearch(event)" placeholder="Tìm kiếm món ăn, đồ uống..." class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-orange-500 transition">
             </div>
             <select id="tableSelector" onchange="changeTable(event)" class="bg-white border border-gray-200 px-4 py-2.5 rounded-xl focus:outline-none focus:border-orange-500 font-medium">
-                <option value="Bàn 01">Bàn 01</option>
-                <option value="Bàn 02">Bàn 02</option>
-                <option value="Bàn 03">Bàn 03</option>
-                <option value="Bàn 04">Bàn 04</option>
+                <option value="Take away 01">Take away 01</option>
+                <option value="Take away 02">Take away 02</option>
+                <option value="Take away 03">Take away 03</option>
+                <option value="Take away 04">Take away 04</option>
             </select>
         </div>
 
@@ -104,10 +128,10 @@
 
         <!-- Khung Tra Cứu & In Lại Hóa Đơn Cũ -->
         <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-6">
-            <h3 class="font-bold text-gray-800 mb-3 text-sm"><i class="fa-solid fa-receipt text-orange-500 mr-2"></i> Tra Cứu & In Lại Hóa Đơn Cũ (Từ Google Sheets)</h3>
+            <h3 class="font-bold text-gray-800 mb-3 text-sm"><i class="fa-solid fa-receipt text-orange-500 mr-2"></i> Tra Cứu & In Lại Hóa Đơn</h3>
             <div class="flex gap-2">
-                <input type="text" id="searchOrderIdInput" placeholder="Nhập mã đơn hàng (Ví dụ: ORD-1234)..." class="flex-1 border border-gray-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-orange-500">
-                <button onclick="fetchAndPrintOldInvoice()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-sm whitespace-nowrap">
+                <input type="text" id="kitchenSearchOrderInput" placeholder="Nhập mã đơn hàng (Ví dụ: ORD-1234)..." class="flex-1 border border-gray-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-orange-500">
+                <button onclick="fetchAndPrintOldInvoice('kitchenSearchOrderInput')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-sm whitespace-nowrap">
                     <i class="fa-solid fa-print mr-1.5"></i> Tìm & Xem Hóa Đơn
                 </button>
             </div>
@@ -148,27 +172,23 @@
                     <h2 class="font-bold text-lg"><i class="fa-solid fa-basket-shopping mr-2"></i> Giỏ Hàng Của Bạn</h2>
                     <button onclick="toggleCartModal(false)" class="text-gray-400 hover:text-gray-600 p-2"><i class="fa-solid fa-xmark text-lg"></i></button>
                 </div>
-                
-                <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
+
+                <div id="cartItemsContainer" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
 
                 <!-- KHUNG NHẬP THÔNG TIN KHÁCH HÀNG & THANH TOÁN -->
                 <div class="border-t p-4 bg-gray-50 space-y-3">
-                    <!-- Bắt buộc nhập tên và số điện thoại -->
                     <div class="bg-white p-3 rounded-xl border border-orange-200 space-y-2 shadow-sm">
                         <p class="text-xs font-bold text-gray-700 uppercase">
                             <i class="fa-solid fa-user-tag text-orange-500 mr-1"></i> Thông tin khách hàng <span class="text-red-500">*</span>
                         </p>
-                        <input type="text" id="customerNameInput" required placeholder="Tên khách hàng (Bắt buộc)..." class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-orange-500">
-                        <input type="tel" id="customerPhoneInput" required placeholder="Số điện thoại (Bắt buộc)..." class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                        <input type="text" id="customerNameInput" required placeholder="Tên khách hàng (Bắt buộc)..." value="Anh Linh" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                        <input type="tel" id="customerPhoneInput" required placeholder="Số điện thoại (Bắt buộc)..." value="0907057154" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-orange-500">
+                        <input type="text" id="customerDeliverInput" required placeholder="Giao đến..." value="C1109" class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-orange-500">
                     </div>
 
                     <div class="flex justify-between text-sm">
                         <span class="text-gray-500">Tạm tính:</span>
                         <span id="cartSubtotal" class="font-medium">0 đ</span>
-                    </div>
-                    <div class="flex justify-between text-sm">
-                        <span class="text-gray-500">Thuế VAT (8%):</span>
-                        <span id="cartTax" class="font-medium">0 đ</span>
                     </div>
                     <div class="flex justify-between text-base font-bold pb-1">
                         <span>Tổng cộng:</span>
@@ -190,18 +210,20 @@
         <div id="printableInvoice" class="relative bg-white w-full max-w-xl rounded-3xl shadow-2xl z-10 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-orange-500 text-white p-5 text-center relative">
                 <button onclick="togglePaymentModal(false)" class="absolute top-4 right-4 text-white/80 hover:text-white p-2 no-print"><i class="fa-solid fa-xmark text-xl"></i></button>
-                <h3 class="text-xl font-bold uppercase tracking-wider">Hóa Đơn Kaolin Quán</h3>
-                <p id="payTableInfo" class="text-sm opacity-90 mt-1">Bàn 01</p>
+                <h3 class="text-xl font-bold uppercase tracking-wider">Kaolin Dessert</h3>
+                <p class="text-sm opacity-90 mt-0.5">Chung cư Tecco Bình Tân</p>
             </div>
             <div class="p-6 overflow-y-auto space-y-4 flex-1">
                 <div class="flex justify-between text-xs text-gray-500 border-b pb-2">
                     <span>Mã GD: <strong id="payInvoiceId" class="text-gray-700">#ORD-0000</strong></span>
+                    <span>Số Bàn: <strong id="payTableInfo" class="text-gray-700">Take away 01</strong></span>
                     <span>Thời gian: <strong id="payTime" class="text-gray-700">00:00</strong></span>
                 </div>
                 <!-- Thông tin khách hàng trên hóa đơn -->
-                <div class="flex justify-between text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
+                <div class="flex flex-wrap justify-between gap-2 text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-lg border">
                     <span>Khách hàng: <strong id="payCustomerName" class="text-gray-800">Khách lẻ</strong></span>
                     <span>SĐT: <strong id="payCustomerPhone" class="text-gray-800">Không có</strong></span>
+                    <span>Giao đến: <strong id="payCustomerDeliver" class="text-gray-800">Tại quán</strong></span>
                 </div>
                 <div class="overflow-x-auto border rounded-xl">
                     <table class="w-full text-left border-collapse text-xs">
@@ -210,8 +232,8 @@
                                 <th class="p-2.5 text-center w-10">STT</th>
                                 <th class="p-2.5">Tên hàng</th>
                                 <th class="p-2.5 text-center w-12">SL</th>
-                                <th class="p-2.5 text-right">ĐG</th>
-                                <th class="p-2.5 text-right">TT</th>
+                                <th class="p-2.5 text-right">Đ.Giá</th>
+                                <th class="p-2.5 text-right">T.Tiền</th>
                             </tr>
                         </thead>
                         <tbody id="payTableBody" class="divide-y divide-gray-100"></tbody>
@@ -219,7 +241,6 @@
                 </div>
                 <div class="space-y-1.5 text-sm bg-gray-50 p-3 rounded-xl border">
                     <div class="flex justify-between text-gray-600 text-xs"><span>Tạm tính:</span><span id="paySubtotal">0 đ</span></div>
-                    <div class="flex justify-between text-gray-600 text-xs"><span>Thuế VAT (8%):</span><span id="payTax">0 đ</span></div>
                     <div class="flex justify-between text-sm font-bold text-gray-800 pt-2 border-t"><span>Tổng thanh toán:</span><span id="payTotal" class="text-orange-600 text-base">0 đ</span></div>
                 </div>
                 <div class="bg-orange-50 border border-orange-200 rounded-2xl p-4 text-center">
@@ -227,8 +248,8 @@
                     <div class="bg-white p-2.5 inline-block rounded-xl shadow-sm border">
                         <img id="vietQRImage" src="" alt="Mã QR Thanh Toán" class="w-32 h-32 object-contain mx-auto">
                     </div>
-                    <p class="text-[11px] text-gray-600 mt-1.5">MB Bank | STK: <strong>190019999999</strong></p>
-                    <p class="text-[11px] text-orange-700 font-medium">Nội dung: <span id="payTransferContent" class="font-bold">TT Ban 01</span></p>
+                    <p class="text-[11px] text-gray-600 mt-1.5">BIDV | STK: <strong>3170076328</strong></p>
+                    <p class="text-[11px] text-orange-700 font-medium">Nội dung: <span id="payTransferContent" class="font-bold">TT Take away 01</span></p>
                 </div>
             </div>
             <div class="p-4 bg-gray-50 border-t flex space-x-2 no-print">
@@ -282,9 +303,10 @@
         let menuItems = [];
 
         let state = {
-            currentTable: "Bàn 01",
+            currentTable: "Take away 01",
             customerName: "",
             customerPhone: "",
+            customerDeliver: "",
             activeCategory: "all",
             searchQuery: "",
             cart: [],
@@ -302,12 +324,12 @@
             if (tableParam) {
                 state.currentTable = decodeURIComponent(tableParam);
                 const tableDisplay = document.getElementById("currentTableDisplay");
-                if(tableDisplay) tableDisplay.innerText = state.currentTable;
+                if (tableDisplay) tableDisplay.innerText = state.currentTable;
 
                 const tableSelector = document.getElementById("tableSelector");
-                if(tableSelector) {
+                if (tableSelector) {
                     tableSelector.value = state.currentTable;
-                    if(tableSelector.value !== state.currentTable) {
+                    if (tableSelector.value !== state.currentTable) {
                         let opt = document.createElement('option');
                         opt.value = state.currentTable;
                         opt.innerText = state.currentTable;
@@ -325,24 +347,29 @@
             if (!GOOGLE_SCRIPT_URL) return;
 
             fetch(`${GOOGLE_SCRIPT_URL}?target=menu`)
-            .then(response => response.json())
-            .then(result => {
-                if (result.status === "success" && result.data && result.data.length > 0) {
-                    menuItems = result.data;
-                } else {
-                    menuItems = [
-                        { id: 1, name: "Phở Bò Đặc Biệt", category: "main", price: 65000, image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500", description: "Thịt bò tái tươi ngon" },
-                        { id: 2, name: "Cơm Sườn Bì Chả", category: "main", price: 55000, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500", description: "Sườn nướng mật ong" }
-                    ];
-                }
-                if (state.userRole !== 'kitchen') {
-                    renderMenu();
-                }
-            })
-            .catch(err => {
-                console.error("Lỗi tải thực đơn từ Google Sheets:", err);
-                document.getElementById("menuGrid").innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Không thể kết nối lấy thực đơn từ Google Sheets.</div>`;
-            });
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success" && result.data && result.data.length > 0) {
+                        // Đảm bảo mỗi món luôn có ID duy nhất (tránh lỗi trùng ID làm gộp 1 dòng trong giỏ hàng)
+                        menuItems = result.data.map((item, idx) => ({
+                            ...item,
+                            id: item.id !== undefined && item.id !== "" ? `${item.id}_${idx}` : `dish_${idx}`,
+                            rawId: item.id
+                        }));
+                    } else {
+                        menuItems = [
+                            { id: "1_0", rawId: 1, name: "Phở Bò Đặc Biệt", category: "main", price: 65000, image: "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=500", description: "Thịt bò tái tươi ngon" },
+                            { id: "2_1", rawId: 2, name: "Cơm Sườn Bì Chả", category: "main", price: 55000, image: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500", description: "Sườn nướng mật ong" }
+                        ];
+                    }
+                    if (state.userRole !== 'kitchen') {
+                        renderMenu();
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi tải thực đơn:", err);
+                    document.getElementById("menuGrid").innerHTML = `<div class="col-span-full text-center py-10 text-red-500">Không thể kết nối lấy thực đơn.</div>`;
+                });
         }
 
         function applyRolePermissions() {
@@ -353,28 +380,28 @@
             const btnMenuManager = document.getElementById("btnMenuManager");
 
             if (state.userRole === 'customer') {
-                if(btnExcel) btnExcel.classList.add("hidden");
-                if(btnViewToggle) btnViewToggle.classList.add("hidden");
-                if(cartBtn) cartBtn.classList.remove("hidden");
-                if(btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
-                if(btnMenuManager) btnMenuManager.classList.add("hidden");
+                if (btnExcel) btnExcel.classList.add("hidden");
+                if (btnViewToggle) btnViewToggle.classList.add("hidden");
+                if (cartBtn) cartBtn.classList.remove("hidden");
+                if (btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
+                if (btnMenuManager) btnMenuManager.classList.add("hidden");
             } else if (state.userRole === 'kitchen') {
-                if(btnExcel) btnExcel.classList.add("hidden");
-                if(btnViewToggle) btnViewToggle.classList.add("hidden");
-                if(cartBtn) cartBtn.classList.add("hidden");
-                if(btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
-                if(btnMenuManager) btnMenuManager.classList.add("hidden");
-                
+                if (btnExcel) btnExcel.classList.add("hidden");
+                if (btnViewToggle) btnViewToggle.classList.add("hidden");
+                if (cartBtn) cartBtn.classList.add("hidden");
+                if (btnPrintInvoice) btnPrintInvoice.classList.add("hidden");
+                if (btnMenuManager) btnMenuManager.classList.add("hidden");
+
                 document.getElementById("customerView").classList.add("hidden");
                 document.getElementById("kitchenView").classList.remove("hidden");
                 state.currentView = "kitchen";
                 renderKitchenOrders();
             } else if (state.userRole === 'admin') {
-                if(btnExcel) btnExcel.classList.remove("hidden");
-                if(btnViewToggle) btnViewToggle.classList.remove("hidden");
-                if(cartBtn) cartBtn.classList.remove("hidden");
-                if(btnPrintInvoice) btnPrintInvoice.classList.remove("hidden");
-                if(btnMenuManager) btnMenuManager.classList.remove("hidden");
+                if (btnExcel) btnExcel.classList.remove("hidden");
+                if (btnViewToggle) btnViewToggle.classList.remove("hidden");
+                if (cartBtn) cartBtn.classList.remove("hidden");
+                if (btnPrintInvoice) btnPrintInvoice.classList.remove("hidden");
+                if (btnMenuManager) btnMenuManager.classList.remove("hidden");
             }
         }
 
@@ -397,22 +424,22 @@
                 const card = document.createElement("div");
                 card.className = "bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col";
                 card.innerHTML = `
-                    <div class="h-40 overflow-hidden bg-gray-100 relative">
-                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
-                    </div>
-                    <div class="p-4 flex-1 flex flex-col justify-between">
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-1">${item.name}</h3>
-                            <p class="text-xs text-gray-500 line-clamp-2 mb-3">${item.description}</p>
+                        <div class="h-40 overflow-hidden bg-gray-100 relative">
+                            <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
                         </div>
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                            <span class="font-bold text-orange-600">${item.price.toLocaleString()} đ</span>
-                            <button onclick="addToCart('${item.id}')" class="bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white p-2 rounded-xl transition text-sm">
-                                <i class="fa-solid fa-plus"></i>
-                            </button>
+                        <div class="p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 class="font-bold text-gray-800 mb-1">${item.name}</h3>
+                                <p class="text-xs text-gray-500 line-clamp-2 mb-3">${item.description}</p>
+                            </div>
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <span class="font-bold text-orange-600">${Number(item.price).toLocaleString()} đ</span>
+                                <button onclick="addToCart('${item.id}')" class="bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white p-2 rounded-xl transition text-sm">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                `;
+                    `;
                 grid.appendChild(card);
             });
         }
@@ -439,11 +466,17 @@
             document.getElementById("currentTableDisplay").innerText = state.currentTable;
         }
 
+        // --- THÊM MÓN VÀO GIỎ HÀNG (ĐÃ FIX LỖI CHỈ LƯU 1 DÒNG) ---
         function addToCart(itemId) {
             const item = menuItems.find(i => String(i.id) === String(itemId));
-            if(!item) return;
+            if (!item) return;
+
             const existing = state.cart.find(c => String(c.item.id) === String(itemId));
-            if (existing) { existing.quantity += 1; } else { state.cart.push({ item: item, quantity: 1 }); }
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                state.cart.push({ item: item, quantity: 1 });
+            }
             updateCartUI();
         }
 
@@ -451,64 +484,69 @@
             const badge = document.getElementById("cartBadge");
             const container = document.getElementById("cartItemsContainer");
             const totalCount = state.cart.reduce((sum, i) => sum + i.quantity, 0);
-            
-            if (totalCount > 0) { badge.innerText = totalCount; badge.classList.remove("hidden"); } 
-            else { badge.classList.add("hidden"); }
+
+            if (totalCount > 0) {
+                badge.innerText = totalCount;
+                badge.classList.remove("hidden");
+            } else {
+                badge.classList.add("hidden");
+            }
 
             container.innerHTML = "";
             if (state.cart.length === 0) {
                 container.innerHTML = `<div class="text-center py-20 text-gray-400">Giỏ hàng trống</div>`;
                 document.getElementById("cartSubtotal").innerText = "0 đ";
-                document.getElementById("cartTax").innerText = "0 đ";
                 document.getElementById("cartTotal").innerText = "0 đ";
                 return;
             }
 
             let subtotal = 0;
             state.cart.forEach((cartItem, index) => {
-                subtotal += cartItem.item.price * cartItem.quantity;
+                const lineTotal = Number(cartItem.item.price) * cartItem.quantity;
+                subtotal += lineTotal;
+
                 const div = document.createElement("div");
                 div.className = "flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200";
                 div.innerHTML = `
-                    <div>
-                        <h4 class="font-bold text-sm text-gray-800">${cartItem.item.name}</h4>
-                        <span class="text-xs text-orange-600 font-medium">${cartItem.item.price.toLocaleString()} đ</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="changeQuantity(${index}, -1)" class="w-6 h-6 bg-white border rounded-lg flex items-center justify-center text-xs">-</button>
-                        <span class="text-sm font-bold w-5 text-center">${cartItem.quantity}</span>
-                        <button onclick="changeQuantity(${index}, 1)" class="w-6 h-6 bg-white border rounded-lg flex items-center justify-center text-xs">+</button>
-                    </div>
-                `;
+                        <div class="pr-2">
+                            <h4 class="font-bold text-sm text-gray-800">${cartItem.item.name}</h4>
+                            <span class="text-xs text-orange-600 font-medium">${Number(cartItem.item.price).toLocaleString()} đ × ${cartItem.quantity} = ${lineTotal.toLocaleString()} đ</span>
+                        </div>
+                        <div class="flex items-center space-x-2 shrink-0">
+                            <button onclick="changeQuantity(${index}, -1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">-</button>
+                            <span class="text-sm font-bold w-5 text-center">${cartItem.quantity}</span>
+                            <button onclick="changeQuantity(${index}, 1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">+</button>
+                        </div>
+                    `;
                 container.appendChild(div);
             });
 
-            const tax = subtotal * 0.08;
-            const total = subtotal + tax;
             document.getElementById("cartSubtotal").innerText = subtotal.toLocaleString() + " đ";
-            document.getElementById("cartTax").innerText = tax.toLocaleString() + " đ";
-            document.getElementById("cartTotal").innerText = total.toLocaleString() + " đ";
+            document.getElementById("cartTotal").innerText = subtotal.toLocaleString() + " đ";
         }
 
         function changeQuantity(index, delta) {
             state.cart[index].quantity += delta;
-            if (state.cart[index].quantity <= 0) { state.cart.splice(index, 1); }
+            if (state.cart[index].quantity <= 0) {
+                state.cart.splice(index, 1);
+            }
             updateCartUI();
         }
 
         function toggleCartModal(show) {
             const modal = document.getElementById("cartModal");
-            if (show) modal.classList.remove("hidden"); else modal.classList.add("hidden");
+            if (show) modal.classList.remove("hidden");
+            else modal.classList.add("hidden");
         }
 
-        // --- ĐỒNG BỘ ĐƠN HÀNG (BAO GỒM TÊN & SĐT) LÊN GOOGLE SHEETS ---
+        // --- ĐỒNG BỘ ĐƠN HÀNG LÊN GOOGLE SHEETS ---
         function sendOrderToGoogleSheet(orderData) {
             if (!GOOGLE_SCRIPT_URL) return;
-            let itemsArray = orderData.items.map(i => ({ 
-                name: i.item.name, 
-                quantity: i.quantity, 
-                price: i.item.price,
-                thanhTien: i.quantity * i.item.price // Bổ sung tính thành tiền cho từng món
+            let itemsArray = orderData.items.map(i => ({
+                name: i.item.name,
+                quantity: i.quantity,
+                price: Number(i.item.price),
+                thanhTien: i.quantity * Number(i.item.price)
             }));
             const formData = new URLSearchParams();
             formData.append("action", "saveOrder");
@@ -518,24 +556,28 @@
             formData.append("table", orderData.table);
             formData.append("customerName", orderData.customerName);
             formData.append("customerPhone", orderData.customerPhone);
+            formData.append("customerDeliver", orderData.customerDeliver);
             formData.append("itemsJson", JSON.stringify(itemsArray));
             formData.append("status", orderData.status === 'paid' ? 'Đặt hàng thành công' : 'Chờ xử lý');
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
-            .catch(err => console.error("Lỗi đồng bộ Google Sheets:", err));
+                .catch(err => console.error("Lỗi đồng bộ", err));
         }
 
-        // --- MỞ MODAL THANH TOÁN (DÀNH CHO KHÁCH ĐẶT MỚI) ---
+        // --- MỞ MODAL THANH TOÁN ---
         function openPaymentQRModal() {
-            if (state.cart.length === 0) { 
-                alert("Giỏ hàng trống! Vui lòng chọn món trước."); 
-                return; 
+            if (state.cart.length === 0) {
+                alert("Giỏ hàng trống! Vui lòng chọn món trước.");
+                return;
             }
-            
+
             const nameEl = document.getElementById("customerNameInput");
             const phoneEl = document.getElementById("customerPhoneInput");
+            const deliverEl = document.getElementById("customerDeliverInput");
+
             const nameInput = nameEl.value.trim();
             const phoneInput = phoneEl.value.trim().replace(/\s+/g, '');
+            const deliverInput = deliverEl.value.trim();
 
             if (!nameInput) {
                 alert("Vui lòng nhập Tên khách hàng trước khi đặt món!");
@@ -557,11 +599,9 @@
 
             state.customerName = nameInput;
             state.customerPhone = phoneInput;
+            state.customerDeliver = deliverInput || "Tại quán";
 
-            let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
-            let tax = subtotal * 0.08;
-            let total = subtotal + tax;
-
+            let total = state.cart.reduce((sum, i) => sum + (Number(i.item.price) * i.quantity), 0);
             let invoiceId = "ORD-" + Math.floor(1000 + Math.random() * 9000);
             let currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -570,33 +610,30 @@
             document.getElementById("payTime").innerText = currentTime;
             document.getElementById("payCustomerName").innerText = state.customerName;
             document.getElementById("payCustomerPhone").innerText = state.customerPhone;
-            document.getElementById("paySubtotal").innerText = subtotal.toLocaleString() + " đ";
-            document.getElementById("payTax").innerText = tax.toLocaleString() + " đ";
+            document.getElementById("payCustomerDeliver").innerText = state.customerDeliver;
+            document.getElementById("paySubtotal").innerText = total.toLocaleString() + " đ";
             document.getElementById("payTotal").innerText = total.toLocaleString() + " đ";
             document.getElementById("payTransferContent").innerText = `TT ${state.currentTable} ${invoiceId}`;
 
             const tableBody = document.getElementById("payTableBody");
             tableBody.innerHTML = "";
             state.cart.forEach((cartItem, index) => {
-                let thanhTien = cartItem.item.price * cartItem.quantity;
+                let thanhTien = Number(cartItem.item.price) * cartItem.quantity;
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                    <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                    <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
-                    <td class="p-2.5 text-center">${cartItem.quantity}</td>
-                    <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
-                    <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
-                `;
+                        <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                        <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
+                        <td class="p-2.5 text-center">${cartItem.quantity}</td>
+                        <td class="p-2.5 text-right">${Number(cartItem.item.price).toLocaleString()}</td>
+                        <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
+                    `;
                 tableBody.appendChild(tr);
             });
 
-            // Hiện lại khung QR và nút xác nhận đặt hàng
-            const qrContainer = document.getElementById("vietQRImage").parentElement.parentElement;
-            if(qrContainer) qrContainer.style.display = "block";
             const btnConfirm = document.getElementById("btnConfirmPaymentAction");
-            if(btnConfirm) btnConfirm.style.display = "block";
+            if (btnConfirm) btnConfirm.style.display = "block";
 
-            let qrUrl = `https://img.vietqr.io/image/MB-190019999999-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${state.currentTable}%20${invoiceId}&accountName=KAOLIN%20QUAN`;
+            let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(state.currentTable)}%20${invoiceId}&accountName=CAO%20HOAI%20LINH`;
             document.getElementById("vietQRImage").src = qrUrl;
 
             toggleCartModal(false);
@@ -605,16 +642,15 @@
 
         function togglePaymentModal(show) {
             const modal = document.getElementById("paymentModal");
-            if (show) modal.classList.remove("hidden"); else modal.classList.add("hidden");
+            if (show) modal.classList.remove("hidden");
+            else modal.classList.add("hidden");
         }
 
         function printInvoice() { window.print(); }
 
         function confirmPaymentSuccess() {
             if (state.cart.length === 0) return;
-            let subtotal = state.cart.reduce((sum, i) => sum + (i.item.price * i.quantity), 0);
-            let tax = subtotal * 0.08;
-
+            let total = state.cart.reduce((sum, i) => sum + (Number(i.item.price) * i.quantity), 0);
             const orderId = document.getElementById("payInvoiceId").innerText || ("ORD-" + Math.floor(1000 + Math.random() * 9000));
 
             const paidOrder = {
@@ -622,10 +658,10 @@
                 table: state.currentTable,
                 customerName: state.customerName,
                 customerPhone: state.customerPhone,
+                customerDeliver: state.customerDeliver,
                 items: [...state.cart],
-                subtotal: subtotal,
-                tax: tax,
-                total: subtotal + tax,
+                subtotal: total,
+                total: total,
                 status: "pending",
                 time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 date: new Date().toLocaleDateString('vi-VN')
@@ -635,98 +671,88 @@
             state.orderHistory.push({ ...paidOrder, status: "paid" });
             sendOrderToGoogleSheet({ ...paidOrder, status: "paid" });
 
-            alert(`Đặt hàng thành công cho đơn hàng ${paidOrder.id}!`);
-            
+            alert(`Đặt hàng thành công cho đơn hàng: ${paidOrder.id}`);
+
             state.cart = [];
-            document.getElementById("customerNameInput").value = "";
-            document.getElementById("customerPhoneInput").value = "";
             updateCartUI();
             togglePaymentModal(false);
-            if(state.currentView === 'kitchen') renderKitchenOrders();
+            if (state.currentView === 'kitchen') renderKitchenOrders();
         }
 
-        // --- TRA CỨU & HIỂN THỊ HÓA ĐƠN CŨ KÈM MÃ QR THANH TOÁN (DÀNH CHO ADMIN) ---
-        function fetchAndPrintOldInvoice() {
-            let searchId = document.getElementById("searchOrderIdInput").value.trim();
+        // --- TRA CỨU & HIỂN THỊ HÓA ĐƠN CŨ KÈM MÃ QR ---
+        function fetchAndPrintOldInvoice(inputId = 'navSearchOrderInput') {
+            const inputEl = document.getElementById(inputId);
+            let searchId = inputEl ? inputEl.value.trim() : "";
             if (!searchId) {
                 alert("Vui lòng nhập mã đơn hàng cần tìm!");
                 return;
             }
 
-            alert("Đang kết nối lấy dữ liệu từ Google Sheets...");
+            alert("Đang kết nối lấy dữ liệu...");
 
             fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
-            .then(response => response.json())
-            .then(result => {
-                if (result.status === "success") {
-                    let allRows = result.data;
-                    let matchedRows = allRows.filter(r => r.orderId.toLowerCase() === searchId.toLowerCase());
-                    
-                    if (matchedRows.length === 0) {
-                        alert("Không tìm thấy mã đơn hàng: " + searchId);
-                        return;
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        let allRows = result.data;
+                        let matchedRows = allRows.filter(r => r.orderId && r.orderId.toLowerCase() === searchId.toLowerCase());
+
+                        if (matchedRows.length === 0) {
+                            alert("Không tìm thấy mã đơn hàng: " + searchId);
+                            return;
+                        }
+
+                        let firstRow = matchedRows[0];
+                        let itemsList = matchedRows.map(r => ({
+                            item: { name: r.itemName, price: Number(r.price) },
+                            quantity: Number(r.quantity)
+                        }));
+
+                        let total = matchedRows.reduce((sum, r) => sum + (Number(r.price) * Number(r.quantity)), 0);
+
+                        document.getElementById("payTableInfo").innerText = firstRow.table;
+                        document.getElementById("payInvoiceId").innerText = firstRow.orderId;
+                        document.getElementById("payTime").innerText = firstRow.time;
+                        document.getElementById("payCustomerName").innerText = firstRow.customerName || "Khách lẻ";
+                        document.getElementById("payCustomerPhone").innerText = firstRow.customerPhone || "Không có";
+                        document.getElementById("payCustomerDeliver").innerText = firstRow.customerDeliver || "Tại quán";
+                        document.getElementById("paySubtotal").innerText = total.toLocaleString() + " đ";
+                        document.getElementById("payTotal").innerText = total.toLocaleString() + " đ";
+                        document.getElementById("payTransferContent").innerText = `TT ${firstRow.table} ${firstRow.orderId}`;
+
+                        const tableBody = document.getElementById("payTableBody");
+                        tableBody.innerHTML = "";
+                        itemsList.forEach((cartItem, index) => {
+                            let thanhTien = cartItem.item.price * cartItem.quantity;
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                    <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                                    <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
+                                    <td class="p-2.5 text-center">${cartItem.quantity}</td>
+                                    <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
+                                    <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
+                                `;
+                            tableBody.appendChild(tr);
+                        });
+
+                        let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(firstRow.table)}%20${firstRow.orderId}&accountName=CAO%20HOAI%20LINH`;
+                        document.getElementById("vietQRImage").src = qrUrl;
+
+                        const btnConfirm = document.getElementById("btnConfirmPaymentAction");
+                        if (btnConfirm) btnConfirm.style.display = "none";
+
+                        document.getElementById("paymentModal").classList.remove("hidden");
+                    } else {
+                        alert("Lỗi khi đọc dữ liệu: " + result.message);
                     }
-
-                    let firstRow = matchedRows[0];
-                    let itemsList = matchedRows.map(r => ({
-                        item: { name: r.itemName, price: r.price },
-                        quantity: r.quantity
-                    }));
-
-                    let subtotal = matchedRows.reduce((sum, r) => sum + (r.price * r.quantity), 0);
-                    let tax = subtotal * 0.08;
-                    let total = subtotal + tax;
-
-                    // Đổ dữ liệu lên hóa đơn
-                    document.getElementById("payTableInfo").innerText = firstRow.table;
-                    document.getElementById("payInvoiceId").innerText = firstRow.orderId;
-                    document.getElementById("payTime").innerText = firstRow.time + " - " + firstRow.date;
-                    document.getElementById("payCustomerName").innerText = firstRow.customerName || "Khách lẻ";
-                    document.getElementById("payCustomerPhone").innerText = firstRow.customerPhone || "Không có";
-                    document.getElementById("paySubtotal").innerText = subtotal.toLocaleString() + " đ";
-                    document.getElementById("payTax").innerText = tax.toLocaleString() + " đ";
-                    document.getElementById("payTotal").innerText = total.toLocaleString() + " đ";
-                    document.getElementById("payTransferContent").innerText = `TT ${firstRow.table} ${firstRow.orderId}`;
-
-                    const tableBody = document.getElementById("payTableBody");
-                    tableBody.innerHTML = "";
-                    itemsList.forEach((cartItem, index) => {
-                        let thanhTien = cartItem.item.price * cartItem.quantity;
-                        const tr = document.createElement("tr");
-                        tr.innerHTML = `
-                            <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                            <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
-                            <td class="p-2.5 text-center">${cartItem.quantity}</td>
-                            <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
-                            <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
-
-                    // HIỂN THỊ MÃ QR THANH TOÁN CHO ĐƠN CŨ NÀY
-                    let qrUrl = `https://img.vietqr.io/image/MB-190019999999-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(firstRow.table)}%20${firstRow.orderId}&accountName=KAOLIN%20QUAN`;
-                    document.getElementById("vietQRImage").src = qrUrl;
-
-                    const qrContainer = document.getElementById("vietQRImage").parentElement.parentElement;
-                    if(qrContainer) qrContainer.style.display = "block";
-
-                    // Ẩn nút "Xác Nhận Đặt Hàng" (vì đơn này đã cũ/đã thanh toán rồi, chỉ xem và in lại)
-                    const btnConfirm = document.getElementById("btnConfirmPaymentAction");
-                    if(btnConfirm) btnConfirm.style.display = "none";
-
-                    // Mở Modal hóa đơn
-                    document.getElementById("paymentModal").classList.remove("hidden");
-                } else {
-                    alert("Lỗi khi đọc dữ liệu từ Google Sheet: " + result.message);
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Không thể kết nối đến Google Sheets. Vui lòng kiểm tra lại đường dẫn Script URL!");
-            });
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Không thể kết nối dữ liệu.");
+                });
         }
 
-        // --- QUẢN LÝ THỰC ĐƠN TRÊN GOOGLE SHEETS ---
+        // --- QUẢN LÝ THỰC ĐƠN ---
         function toggleMenuManagerModal(show) {
             const modal = document.getElementById("menuManagerModal");
             if (show) {
@@ -750,17 +776,17 @@
                 const div = document.createElement("div");
                 div.className = "flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200 shadow-sm";
                 div.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-lg">
-                        <div>
-                            <h5 class="font-bold text-sm text-gray-800">${item.name}</h5>
-                            <span class="text-xs text-orange-600 font-medium">${item.price.toLocaleString()} đ</span>
+                        <div class="flex items-center space-x-3">
+                            <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-lg">
+                            <div>
+                                <h5 class="font-bold text-sm text-gray-800">${item.name}</h5>
+                                <span class="text-xs text-orange-600 font-medium">${Number(item.price).toLocaleString()} đ</span>
+                            </div>
                         </div>
-                    </div>
-                    <button onclick="deleteDish('${item.id}')" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
-                        <i class="fa-solid fa-trash mr-1"></i> Xóa
-                    </button>
-                `;
+                        <button onclick="deleteDish('${item.rawId}')" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                            <i class="fa-solid fa-trash mr-1"></i> Xóa
+                        </button>
+                    `;
                 container.appendChild(div);
             });
         }
@@ -781,7 +807,7 @@
                 image = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500";
             }
 
-            const newId = menuItems.length > 0 ? Math.max(...menuItems.map(i => Number(i.id) || 0)) + 1 : 1;
+            const newId = menuItems.length > 0 ? Math.max(...menuItems.map(i => Number(i.rawId) || 0)) + 1 : 1;
 
             const formData = new URLSearchParams();
             formData.append("action", "addDish");
@@ -793,114 +819,114 @@
             formData.append("description", description || "Món ăn ngon hấp dẫn.");
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
-            .then(() => {
-                alert("Đã gửi yêu cầu thêm món mới lên Google Sheets!");
-                menuItems.push({ id: newId, name, category, price, image, description });
-                
-                document.getElementById("newDishName").value = "";
-                document.getElementById("newDishPrice").value = "";
-                document.getElementById("newDishImage").value = "";
-                document.getElementById("newDishDesc").value = "";
-
-                renderManageDishList();
-                renderMenu();
-            })
-            .catch(err => alert("Lỗi khi thêm món: " + err));
-        }
-
-        function deleteDish(itemId) {
-            if (confirm("Bạn có chắc chắn muốn xóa món này khỏi Sheet Menu không?")) {
-                const formData = new URLSearchParams();
-                formData.append("action", "deleteDish");
-                formData.append("id", itemId);
-
-                fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
                 .then(() => {
-                    alert("Đã xóa món khỏi Google Sheets!");
-                    menuItems = menuItems.filter(i => String(i.id) !== String(itemId));
+                    alert("Đã gửi yêu cầu thêm món mới.");
+                    menuItems.push({ id: `${newId}_${menuItems.length}`, rawId: newId, name, category, price, image, description });
+
+                    document.getElementById("newDishName").value = "";
+                    document.getElementById("newDishPrice").value = "";
+                    document.getElementById("newDishImage").value = "";
+                    document.getElementById("newDishDesc").value = "";
+
                     renderManageDishList();
                     renderMenu();
                 })
-                .catch(err => alert("Lỗi khi xóa món: " + err));
+                .catch(err => alert("Lỗi khi thêm món: " + err));
+        }
+
+        function deleteDish(rawId) {
+            if (confirm("Bạn có chắc chắn muốn xóa món này khỏi Sheet Menu không?")) {
+                const formData = new URLSearchParams();
+                formData.append("action", "deleteDish");
+                formData.append("id", rawId);
+
+                fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
+                    .then(() => {
+                        alert("Đã xóa món.");
+                        menuItems = menuItems.filter(i => String(i.rawId) !== String(rawId));
+                        renderManageDishList();
+                        renderMenu();
+                    })
+                    .catch(err => alert("Lỗi khi xóa món: " + err));
             }
         }
 
-        // --- XUẤT EXCEL CÓ KÈM TÊN KHÁCH VÀ SĐT ---
+        // --- XUẤT EXCEL ---
         function exportOrdersToExcel() {
-            alert("Đang kết nối lấy toàn bộ dữ liệu từ Google Sheets để lập báo cáo...");
+            alert("Đang kết nối lấy toàn bộ dữ liệu để lập báo cáo...");
 
             fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
-            .then(response => response.json())
-            .then(result => {
-                if (result.status === "success") {
-                    let allRows = result.data;
-                    
-                    if (allRows.length === 0) {
-                        alert("Chưa có dữ liệu đơn hàng nào trên Google Sheets!");
-                        return;
-                    }
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        let allRows = result.data;
 
-                    let fromDateStr = prompt("Nhập từ ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
-                    if (fromDateStr === null) return;
-                    
-                    let toDateStr = prompt("Nhập đến ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
-                    if (toDateStr === null) return;
+                        if (allRows.length === 0) {
+                            alert("Chưa có dữ liệu đơn hàng nào.");
+                            return;
+                        }
 
-                    let filteredRows = allRows;
-                    if (fromDateStr.trim() !== "" || toDateStr.trim() !== "") {
-                        filteredRows = allRows.filter(r => {
-                            let orderDateParts = r.date.split("/");
-                            if (orderDateParts.length !== 3) return true;
-                            let orderDateObj = new Date(orderDateParts[2], orderDateParts[1] - 1, orderDateParts[0]);
+                        let fromDateStr = prompt("Nhập từ ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
+                        if (fromDateStr === null) return;
 
-                            let isValid = true;
-                            if (fromDateStr.trim() !== "") {
-                                let fromParts = fromDateStr.trim().split("/");
-                                let fromDateObj = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
-                                if (orderDateObj < fromDateObj) isValid = false;
-                            }
-                            if (toDateStr.trim() !== "") {
-                                let toParts = toDateStr.trim().split("/");
-                                let toDateObj = new Date(toParts[2], toParts[1] - 1, toParts[0]);
-                                if (orderDateObj > toDateObj) isValid = false;
-                            }
-                            return isValid;
+                        let toDateStr = prompt("Nhập đến ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
+                        if (toDateStr === null) return;
+
+                        let filteredRows = allRows;
+                        if (fromDateStr.trim() !== "" || toDateStr.trim() !== "") {
+                            filteredRows = allRows.filter(r => {
+                                let orderDateParts = r.date.split("/");
+                                if (orderDateParts.length !== 3) return true;
+                                let orderDateObj = new Date(orderDateParts[2], orderDateParts[1] - 1, orderDateParts[0]);
+
+                                let isValid = true;
+                                if (fromDateStr.trim() !== "") {
+                                    let fromParts = fromDateStr.trim().split("/");
+                                    let fromDateObj = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
+                                    if (orderDateObj < fromDateObj) isValid = false;
+                                }
+                                if (toDateStr.trim() !== "") {
+                                    let toParts = toDateStr.trim().split("/");
+                                    let toDateObj = new Date(toParts[2], toParts[1] - 1, toParts[0]);
+                                    if (orderDateObj > toDateObj) isValid = false;
+                                }
+                                return isValid;
+                            });
+                        }
+
+                        if (filteredRows.length === 0) {
+                            alert("Không có đơn hàng nào trong khoảng thời gian đã chọn!");
+                            return;
+                        }
+
+                        const excelData = [];
+                        filteredRows.forEach(r => {
+                            excelData.push({
+                                "Ngày đặt": r.date,
+                                "Thời gian": r.time,
+                                "Mã Đơn Hàng": r.orderId,
+                                "Bàn": r.table,
+                                "Tên Khách": r.customerName || "Khách lẻ",
+                                "Số Điện Thoại": r.customerPhone || "",
+                                "Tên Món": r.itemName,
+                                "Số Lượng": r.quantity,
+                                "Đơn Giá (đ)": r.price,
+                                "Thành Tiền (đ)": r.price * r.quantity,
+                                "Trạng Thái": r.status
+                            });
                         });
+
+                        const worksheet = XLSX.utils.json_to_sheet(excelData);
+                        const workbook = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDoanhThu");
+                        XLSX.writeFile(workbook, `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+                        alert(`Xuất báo cáo thành công ${filteredRows.length} dòng dữ liệu!`);
+                    } else {
+                        alert("Lỗi đọc dữ liệu: " + result.message);
                     }
-
-                    if (filteredRows.length === 0) {
-                        alert("Không có đơn hàng nào trong khoảng thời gian đã chọn!");
-                        return;
-                    }
-
-                    const excelData = [];
-                    filteredRows.forEach(r => {
-                        excelData.push({
-                            "Ngày đặt": r.date,
-                            "Thời gian": r.time,
-                            "Mã Đơn Hàng": r.orderId,
-                            "Bàn": r.table,
-                            "Tên Khách": r.customerName || "Khách lẻ",
-                            "Số Điện Thoại": r.customerPhone || "",
-                            "Tên Món": r.itemName,
-                            "Số Lượng": r.quantity,
-                            "Đơn Giá (đ)": r.price,
-                            "Thành Tiền (đ)": r.price * r.quantity,
-                            "Trạng Thái": r.status
-                        });
-                    });
-
-                    const worksheet = XLSX.utils.json_to_sheet(excelData);
-                    const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDoanhThu");
-                    XLSX.writeFile(workbook, `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
-                    
-                    alert(`Xuất báo cáo thành công ${filteredRows.length} dòng dữ liệu!`);
-                } else {
-                    alert("Lỗi đọc dữ liệu: " + result.message);
-                }
-            })
-            .catch(err => alert("Không thể kết nối đến Google Sheets: " + err));
+                })
+                .catch(err => alert("Không thể kết nối dữ liệu: " + err));
         }
 
         function toggleView() {
@@ -920,7 +946,7 @@
                 state.currentView = "customer";
                 kitchenView.classList.add("hidden");
                 customerView.classList.remove("hidden");
-                if(state.userRole !== 'kitchen') cartBtn.classList.remove("hidden");
+                if (state.userRole !== 'kitchen') cartBtn.classList.remove("hidden");
                 btn.innerHTML = `<i class="fa-solid fa-kitchen-set mr-1"></i> Vào Bếp`;
             }
         }
@@ -973,25 +999,26 @@
                 let itemsHtml = order.items.map(i => `<li class="text-sm text-gray-600 flex justify-between"><span>${i.item.name}</span> <span class="font-bold">x${i.quantity}</span></li>`).join('');
 
                 card.innerHTML = `
-                    <div>
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="font-bold text-gray-800">${order.table} (${order.id})</span>
-                            ${statusBadge}
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="font-bold text-gray-800">${order.table} (${order.id})</span>
+                                ${statusBadge}
+                            </div>
+                            <div class="text-xs text-gray-500 mb-3 space-y-0.5">
+                                <div>Thời gian: ${order.time}</div>
+                                <div>Khách: <strong class="text-gray-700">${order.customerName}</strong> (${order.customerPhone})</div>
+                                <div>Giao đến: <strong class="text-gray-700">${order.customerDeliver}</strong></div>
+                            </div>
+                            <ul class="space-y-1 mb-4 border-t border-b border-gray-100 py-3">${itemsHtml}</ul>
                         </div>
-                        <div class="text-xs text-gray-500 mb-3 space-y-0.5">
-                            <div>Thời gian: ${order.time}</div>
-                            <div>Khách: <strong class="text-gray-700">${order.customerName}</strong> (${order.customerPhone})</div>
-                        </div>
-                        <ul class="space-y-1 mb-4 border-t border-b border-gray-100 py-3">${itemsHtml}</ul>
-                    </div>
-                    <div>${actionBtn}</div>
-                `;
+                        <div>${actionBtn}</div>
+                    `;
                 container.appendChild(card);
             });
         }
 
         function updateOrderStatus(index, newStatus) {
-            if (newStatus === 'done') { state.orders.splice(index, 1); } 
+            if (newStatus === 'done') { state.orders.splice(index, 1); }
             else { state.orders[index].status = newStatus; }
             renderKitchenOrders();
         }
