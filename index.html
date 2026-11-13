@@ -1002,6 +1002,7 @@
 
         // --- BÁO CÁO DOANH THU TRỰC TIẾP ---
         // --- 1. XEM BÁO CÁO DOANH THU TRỰC TIẾP & LƯU LẠI DỮ LIỆU ---
+        // --- HÀM XEM BÁO CÁO DOANH THU TRỰC TIẾP (Đã chuẩn hóa định dạng ngày YYYY-MM-DD) ---
         function loadLiveRevenueReport() {
             const startDateStr = document.getElementById("reportStartDate").value; // dạng yyyy-mm-dd từ input date
             const endDateStr = document.getElementById("reportEndDate").value;     // dạng yyyy-mm-dd từ input date
@@ -1019,12 +1020,27 @@
                             return;
                         }
 
+                        // Hàm phụ trợ chuẩn hóa chuỗi ngày thành YYYY-MM-DD để hiển thị và lọc
+                        function formatCleanDate(rawDate) {
+                            if (!rawDate) return "";
+                            let dateStr = String(rawDate);
+                            // Nếu có chứa 'T' (dạng ISO 2026-11-13T00:00:00.000Z)
+                            if (dateStr.includes('T')) {
+                                return dateStr.split('T')[0];
+                            }
+                            // Nếu ở dạng DD/MM/YYYY thì đổi ngược lại thành YYYY-MM-DD để đồng bộ
+                            let parts = dateStr.split('/');
+                            if (parts.length === 3) {
+                                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                            }
+                            return dateStr.substring(0, 10); // Cắt lấy 10 ký tự đầu tiên phòng hờ
+                        }
+
                         // Lọc dữ liệu theo khoảng thời gian chọn
                         let filteredRows = allRows.filter(r => {
                             if (!r.date) return false;
-                            let parts = r.date.split("/"); // DD/MM/YYYY từ Sheet
-                            if (parts.length !== 3) return true;
-                            let orderDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+                            let cleanOrderDate = formatCleanDate(r.date); // YYYY-MM-DD
+                            let orderDateObj = new Date(cleanOrderDate);
 
                             let isValid = true;
                             if (startDateStr) {
@@ -1047,11 +1063,11 @@
                             document.getElementById("repTotalOrders").innerText = "0";
                             document.getElementById("repTotalQty").innerText = "0";
                             document.getElementById("repTotalRevenue").innerText = "0 đ";
-                            state.currentReportData = []; // Xóa dữ liệu cũ nếu không có kết quả
+                            state.currentReportData = [];
                             return;
                         }
 
-                        // LƯU LẠI DỮ LIỆU ĐÃ LỌC VÀO BIẾN TOÀN CỤC ĐỂ DÙNG CHO XUẤT EXCEL
+                        // Lưu lại dữ liệu đã lọc để xuất Excel
                         state.currentReportData = filteredRows;
 
                         let totalRevenue = 0;
@@ -1067,10 +1083,13 @@
                             totalQty += qty;
                             uniqueOrders.add(r.orderId);
 
+                            // Lấy ngày đã được làm sạch định dạng YYYY-MM-DD
+                            let displayDate = formatCleanDate(r.date);
+
                             const tr = document.createElement("tr");
                             tr.innerHTML = `
                                 <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                                <td class="p-2.5">${r.date}</td>
+                                <td class="p-2.5">${displayDate}</td>
                                 <td class="p-2.5">${r.time}</td>
                                 <td class="p-2.5 font-bold text-gray-700">${r.orderId}</td>
                                 <td class="p-2.5">${r.table}</td>
