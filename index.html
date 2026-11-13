@@ -142,6 +142,8 @@
             </div>
         </div>
 
+ 
+
 
 <!-- KHUNG XEM BÁO CÁO DOANH THU TRỰC TIẾP -->
         <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mb-6 no-print">
@@ -872,9 +874,9 @@
                                 let assignedStatus = "pending";
                                 if (existingOrdersMap[row.orderId]) {
                                     assignedStatus = existingOrdersMap[row.orderId]; // GIỮ NGUYÊN 'cooking' hoặc 'served'
-                                } else if (currentStatus.includes("lên món") || currentStatus.includes("phục vụ")) {
+                                } else if (currentStatus.includes("Đã lên món") || currentStatus.includes("phục vụ")) {
                                     assignedStatus = "served";
-                                } else if (currentStatus.includes("đang chế biến")) {
+                                } else if (currentStatus.includes("Đang chế biến")) {
                                     assignedStatus = "cooking";
                                 }
 
@@ -929,6 +931,7 @@
                     if (isManual) alert("Không thể kết nối lấy dữ liệu từ Google Sheets!");
                 });
         }
+
         function playNotificationSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
