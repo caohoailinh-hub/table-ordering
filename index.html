@@ -71,12 +71,20 @@
                 </button>
 
                 <!-- Khung Tra Cứu Đơn Hàng trên Navbar -->
-                <div class="flex gap-1.5">
-                    <input type="text" id="navSearchOrderInput" placeholder="Mã đơn (ORD-1234)..." class="w-36 sm:w-52 border border-gray-200 px-3 py-2 rounded-xl text-sm focus:outline-none focus:border-orange-500">
-                    <button onclick="fetchAndPrintOldInvoice('navSearchOrderInput')" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl text-sm font-bold transition flex items-center shadow-sm whitespace-nowrap">
-                        <i class="fa-solid fa-magnifying-glass sm:mr-1.5"></i> <span class="hidden sm:inline">Tra cứu</span>
-                    </button>
-                </div>
+                <div class="flex items-center gap-2">
+    		<!-- Ô nhập mã đơn: Đã giảm chiều cao bằng py-1.5 và text-sm -->
+		    <input type="text" id="navSearchOrderInput" 
+	           class="w-full sm:w-64 px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
+        	   placeholder="Mã đơn (ORD-1234)...">
+           
+		    <!-- Nút Tra cứu: Đã giảm chiều cao bằng py-1.5 và text-sm -->
+		    <button onclick="fetchAndPrintOldInvoice()" 
+	            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 text-sm font-medium rounded-lg flex items-center gap-1.5 transition-colors whitespace-nowrap shadow-sm">
+        		<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        	    	<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        		</svg>Tra cứu
+		    </button>
+		</div>
 
                 <!-- Nút Giỏ Hàng -->
                 <button id="cartBtn" onclick="toggleCartModal(true)" class="relative bg-orange-500 hover:bg-orange-600 text-white p-2.5 rounded-xl transition">
