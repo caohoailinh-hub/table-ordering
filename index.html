@@ -857,27 +857,32 @@
                         // Lấy danh sách các đơn đã hoàn thành thực sự từ localStorage
                         let completedOrders = JSON.parse(localStorage.getItem('kaolin_completed_orders') || '[]');
 
-                        // Lưu lại trạng thái hiện tại của các đơn trên màn hình bếp (để không bị mất trạng thái 'cooking' hoặc 'served' khi quét lại)
+                        // 1. LƯU LẠI TRẠNG THÁI HIỆN TẠI ĐANG CÓ TRÊN MÀN HÌNH BẾP (Bảo vệ tuyệt đối 'cooking' và 'served')
                         let existingOrdersMap = {};
-                        state.orders.forEach(o => { existingOrdersMap[o.id] = o.status; });
+                        state.orders.forEach(o => { 
+                            existingOrdersMap[o.id] = o.status; // Lưu lại trạng thái: pending, cooking, served
+                        });
 
-                        // Gom nhóm theo mã đơn
+                        // 2. Gom nhóm dữ liệu từ Google Sheets
                         let ordersObj = {};
                         allRows.forEach(row => {
                             if (!row.orderId) return;
 
                             let currentStatus = row.status ? row.status.trim().toLowerCase() : "";
                             
-                            // CHỈ BỎ QUA KHI ĐƠN ĐÃ THỰC SỰ HOÀN TẤT / NẰM TRONG LOCALSTORAGE
+                            // Chỉ bỏ qua khi đơn đã thực sự hoàn tất hoặc nằm trong localStorage
                             if (completedOrders.includes(row.orderId) || currentStatus.includes("hoàn thành")) {
                                 return; 
                             }
 
                             if (!ordersObj[row.orderId]) {
-                                // Giữ nguyên trạng thái đang làm trên màn hình nếu có, ngược lại lấy từ sheet hoặc mặc định pending
+                                // XÁC ĐỊNH TRẠNG THÁI ƯU TIÊN CAO NHẤT:
+                                // Ưu tiên 1: Lấy trạng thái đang hiển thị trên màn hình bếp
+                                // Ưu tiên 2: Nếu chưa có trên màn hình, lấy từ trạng thái Sheet
+                                // Ưu tiên 3: Mặc định là 'pending' (chờ nấu)
                                 let assignedStatus = "pending";
                                 if (existingOrdersMap[row.orderId]) {
-                                    assignedStatus = existingOrdersMap[row.orderId]; // Giữ nguyên 'cooking' hoặc 'served'
+                                    assignedStatus = existingOrdersMap[row.orderId]; // GIỮ NGUYÊN 'cooking' hoặc 'served'
                                 } else if (currentStatus.includes("lên món") || currentStatus.includes("phục vụ")) {
                                     assignedStatus = "served";
                                 } else if (currentStatus.includes("đang chế biến")) {
@@ -904,7 +909,7 @@
 
                         let fetchedOrders = Object.values(ordersObj);
 
-                        // Cập nhật lại danh sách đơn trên bếp
+                        // Cập nhật lại danh sách đơn trên bếp mà không làm mất trạng thái đang làm
                         state.orders = fetchedOrders;
                         renderKitchenOrders();
 
