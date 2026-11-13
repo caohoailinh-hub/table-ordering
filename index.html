@@ -126,7 +126,7 @@
             </div>
         </div>
 
-        <!-- Khung Tra Cứu & In Lại Hóa Đơn Cũ -->
+ <!-- Khung Tra Cứu & In Lại Hóa Đơn Cũ -->
         <div class="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm mb-6">
             <h3 class="font-bold text-gray-800 mb-3 text-sm"><i class="fa-solid fa-receipt text-orange-500 mr-2"></i> Tra Cứu & In Lại Hóa Đơn</h3>
             <div class="flex gap-2">
@@ -136,6 +136,63 @@
                 </button>
             </div>
         </div>
+
+
+<!-- KHUNG XEM BÁO CÁO DOANH THU TRỰC TIẾP -->
+        <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm mb-6 no-print">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-3">
+                <h3 class="font-bold text-gray-800 text-base"><i class="fa-solid fa-chart-line text-orange-500 mr-2"></i> Báo Cáo Doanh Thu Trực Tiếp</h3>
+                
+                <!-- Bộ lọc khoảng thời gian -->
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center space-x-1 text-xs">
+                        <span class="text-gray-500">Từ:</span>
+                        <input type="date" id="reportStartDate" class="border border-gray-200 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-orange-500">
+                    </div>
+                    <div class="flex items-center space-x-1 text-xs">
+                        <span class="text-gray-500">Đến:</span>
+                        <input type="date" id="reportEndDate" class="border border-gray-200 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-orange-500">
+                    </div>
+                    <button onclick="loadLiveRevenueReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center shadow-sm">
+                        <i class="fa-solid fa-filter mr-1"></i> Xem Báo Cáo
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tổng kết nhanh số liệu -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-xs">
+                <div>Tổng số đơn: <strong id="repTotalOrders" class="text-indigo-700 font-bold">0</strong></div>
+                <div>Tổng số lượng món: <strong id="repTotalQty" class="text-indigo-700 font-bold">0</strong></div>
+                <div>Tổng doanh thu lọc: <strong id="repTotalRevenue" class="text-indigo-700 font-bold text-sm">0 đ</strong></div>
+            </div>
+
+            <!-- Bảng hiển thị chi tiết doanh thu -->
+            <div class="overflow-x-auto border rounded-xl max-h-80">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-gray-100 text-gray-700 border-b sticky top-0">
+                            <th class="p-2.5 text-center w-10">STT</th>
+                            <th class="p-2.5">Ngày</th>
+                            <th class="p-2.5">Thời gian</th>
+                            <th class="p-2.5">Mã ĐH</th>
+                            <th class="p-2.5">Bàn</th>
+                            <th class="p-2.5">Khách hàng</th>
+                            <th class="p-2.5">Tên món</th>
+                            <th class="p-2.5 text-center">SL</th>
+                            <th class="p-2.5 text-right">Đơn giá</th>
+                            <th class="p-2.5 text-right">Thành tiền</th>
+                            <th class="p-2.5">Giao đến</th>
+                        </tr>
+                    </thead>
+                    <tbody id="liveReportTableBody" class="divide-y divide-gray-100">
+                        <tr>
+                            <td colspan="11" class="text-center py-8 text-gray-400">Vui lòng chọn khoảng thời gian và bấm "Xem Báo Cáo".</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+       
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -1022,6 +1079,202 @@
             else { state.orders[index].status = newStatus; }
             renderKitchenOrders();
         }
+
+
+// --- XEM BÁO CÁO DOANH THU TRỰC TIẾP TRÊN GIAO DIỆN ---
+        function loadLiveRevenueReport() {
+            const startDateStr = document.getElementById("reportStartDate").value; // yyyy-mm-dd
+            const endDateStr = document.getElementById("reportEndDate").value;     // yyyy-mm-dd
+
+            alert("Đang kết nối lấy dữ liệu báo cáo từ Google Sheets...");
+
+            fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === "success") {
+                    let allRows = result.data;
+                    
+                    if (allRows.length === 0) {
+                        alert("Chưa có dữ liệu đơn hàng nào trên Google Sheets!");
+                        return;
+                    }
+
+                    // Lọc dữ liệu theo khoảng thời gian nếu người dùng chọn
+                    let filteredRows = allRows.filter(r => {
+                        if (!r.date) return false;
+                        let parts = r.date.split("/"); // Định dạng DD/MM/YYYY từ Sheet
+                        if (parts.length !== 3) return true;
+                        let orderDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+
+                        let isValid = true;
+                        if (startDateStr) {
+                            let startDateObj = new Date(startDateStr);
+                            if (orderDateObj < startDateObj) isValid = false;
+                        }
+                        if (endDateStr) {
+                            let endDateObj = new Date(endDateStr);
+                            endDateObj.setHours(23, 59, 59, 999);
+                            if (orderDateObj > endDateObj) isValid = false;
+                        }
+                        return isValid;
+                    });
+
+                    const tbody = document.getElementById("liveReportTableBody");
+                    tbody.innerHTML = "";
+
+                    if (filteredRows.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">Không có dữ liệu trong khoảng thời gian đã chọn.</td></tr>`;
+                        document.getElementById("repTotalOrders").innerText = "0";
+                        document.getElementById("repTotalQty").innerText = "0";
+                        document.getElementById("repTotalRevenue").innerText = "0 đ";
+                        return;
+                    }
+
+                    let totalRevenue = 0;
+                    let totalQty = 0;
+                    let uniqueOrders = new Set();
+
+                    filteredRows.forEach((r, index) => {
+                        let qty = Number(r.quantity) || 0;
+                        let price = Number(r.price) || 0;
+                        let thanhTien = Number(r.thanhTien) || (qty * price);
+
+                        totalRevenue += thanhTien;
+                        totalQty += qty;
+                        uniqueOrders.add(r.orderId);
+
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                            <td class="p-2.5">${r.date}</td>
+                            <td class="p-2.5">${r.time}</td>
+                            <td class="p-2.5 font-bold text-gray-700">${r.orderId}</td>
+                            <td class="p-2.5">${r.table}</td>
+                            <td class="p-2.5">${r.customerName || "Khách lẻ"}</td>
+                            <td class="p-2.5 font-medium text-gray-800">${r.itemName}</td>
+                            <td class="p-2.5 text-center">${qty}</td>
+                            <td class="p-2.5 text-right">${price.toLocaleString()} đ</td>
+                            <td class="p-2.5 text-right font-bold text-orange-600">${thanhTien.toLocaleString()} đ</td>
+                            <td class="p-2.5 text-gray-600">${r.customerDeliver || "Tại quán"}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    // Cập nhật số liệu tổng kết lên giao diện
+                    document.getElementById("repTotalOrders").innerText = uniqueOrders.size;
+                    document.getElementById("repTotalQty").innerText = totalQty;
+                    document.getElementById("repTotalRevenue").innerText = totalRevenue.toLocaleString() + " đ";
+
+                    alert(`Đã tải thành công báo cáo với ${filteredRows.length} dòng dữ liệu!`);
+                } else {
+                    alert("Lỗi đọc dữ liệu: " + result.message);
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Không thể kết nối đến Google Sheets!");
+            });
+        }
+
+
+
+
+// --- TÍNH NĂNG TỰ ĐỘNG KIỂM TRA ĐƠN HÀNG MỚI (POLLING) ---
+        let lastKnownOrderCount = 0; // Biến lưu số lượng đơn cũ để đối chiếu
+        let isFirstCheck = true;     // Tránh báo động giả ở lần tải trang đầu tiên
+
+        function startAutoCheckNewOrders() {
+            // Kiểm tra định kỳ mỗi 15 giây (15000ms)
+            setInterval(() => {
+                // Chỉ chạy khi đang ở giao diện nhà bếp/quản lý
+                if (state.currentView !== 'kitchen') return;
+
+                fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        let allRows = result.data;
+                        
+                        // Lọc đếm số lượng mã đơn hàng độc lập (orderId)
+                        let uniqueOrdersMap = {};
+                        allRows.forEach(r => { if (r.orderId) uniqueOrdersMap[r.orderId] = true; });
+                        let currentOrderCount = Object.keys(uniqueOrdersMap).length;
+
+                        if (isFirstCheck) {
+                            lastKnownOrderCount = currentOrderCount;
+                            isFirstCheck = false;
+                            return;
+                        }
+
+                        // Nếu phát hiện số lượng đơn hàng tăng lên -> Có đơn mới!
+                        if (currentOrderCount > lastKnownOrderCount) {
+                            let newOrdersCount = currentOrderCount - lastKnownOrderCount;
+                            playNotificationSound(); // Phát âm thanh báo động
+                            showNewOrderAlert(newOrdersCount); // Hiển thị thông báo màn hình
+                            
+                            // Cập nhật lại số lượng mới và tải lại danh sách hiển thị
+                            lastKnownOrderCount = currentOrderCount;
+                            // Gọi lại hàm cập nhật danh sách đơn hàng lên giao diện bếp nếu có
+                            if (typeof renderKitchenOrdersFromSheet === 'function') {
+                                renderKitchenOrdersFromSheet();
+                            } else {
+                                location.reload(); // Hoặc tải lại trang nhẹ nhàng để cập nhật đơn
+                            }
+                        }
+                    }
+                })
+                .catch(err => console.error("Lỗi tự động kiểm tra đơn mới:", err));
+            }, 15000); // 15 giây kiểm tra 1 lần
+        }
+
+        // Hàm phát âm thanh cảnh báo (Sử dụng Web Audio API tích hợp sẵn, không cần file nhạc ngoài)
+        function playNotificationSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Âm bíp cao
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3); // Kéo dài 0.3 giây
+            } catch (e) {
+                console.log("Trình duyệt chặn âm thanh tự động:", e);
+            }
+        }
+
+        // Hàm hiển thị hộp thoại thông báo nổi
+        function showNewOrderAlert(count) {
+            // Tạo một thẻ div thông báo nổi góc màn hình
+            const alertBox = document.createElement("div");
+            alertBox.className = "fixed bottom-5 right-5 bg-orange-600 text-white px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center space-x-3 animate-bounce";
+            alertBox.innerHTML = `
+                <i class="fa-solid fa-bell text-2xl animate-spin"></i>
+                <div>
+                    <h4 class="font-bold text-sm">Có ${count} đơn hàng mới!</h4>
+                    <p class="text-xs opacity-90">Vui lòng kiểm tra danh sách đơn chờ nấu.</p>
+                </div>
+            `;
+            document.body.appendChild(alertBox);
+
+            // Tự động ẩn sau 6 giây
+            setTimeout(() => {
+                alertBox.remove();
+            }, 6000);
+        }
+
+        // Kích hoạt tính năng quét ngầm khi trang được tải xong và đang ở chế độ bếp
+        document.addEventListener("DOMContentLoaded", () => {
+            startAutoCheckNewOrders();
+        });
+
+
+
     </script>
 </body>
 </html>
