@@ -854,20 +854,36 @@
                             return;
                         }
 
-                        // Lấy danh sách các đơn đã hoàn thành từ localStorage
+                        // Lấy danh sách các đơn đã hoàn thành thực sự từ localStorage
                         let completedOrders = JSON.parse(localStorage.getItem('kaolin_completed_orders') || '[]');
 
-                        // Gom nhóm theo mã đơn, loại bỏ các đơn đã xong
+                        // Lưu lại trạng thái hiện tại của các đơn trên màn hình bếp (để không bị mất trạng thái 'cooking' hoặc 'served' khi quét lại)
+                        let existingOrdersMap = {};
+                        state.orders.forEach(o => { existingOrdersMap[o.id] = o.status; });
+
+                        // Gom nhóm theo mã đơn
                         let ordersObj = {};
                         allRows.forEach(row => {
                             if (!row.orderId) return;
 
                             let currentStatus = row.status ? row.status.trim().toLowerCase() : "";
-                            if (completedOrders.includes(row.orderId) || currentStatus.includes("hoàn thành") || currentStatus.includes("phục vụ") || currentStatus.includes("lên món")) {
+                            
+                            // CHỈ BỎ QUA KHI ĐƠN ĐÃ THỰC SỰ HOÀN TẤT / NẰM TRONG LOCALSTORAGE
+                            if (completedOrders.includes(row.orderId) || currentStatus.includes("hoàn thành")) {
                                 return; 
                             }
 
                             if (!ordersObj[row.orderId]) {
+                                // Giữ nguyên trạng thái đang làm trên màn hình nếu có, ngược lại lấy từ sheet hoặc mặc định pending
+                                let assignedStatus = "pending";
+                                if (existingOrdersMap[row.orderId]) {
+                                    assignedStatus = existingOrdersMap[row.orderId]; // Giữ nguyên 'cooking' hoặc 'served'
+                                } else if (currentStatus.includes("lên món") || currentStatus.includes("phục vụ")) {
+                                    assignedStatus = "served";
+                                } else if (currentStatus.includes("đang chế biến")) {
+                                    assignedStatus = "cooking";
+                                }
+
                                 ordersObj[row.orderId] = {
                                     id: row.orderId,
                                     table: row.table,
@@ -876,7 +892,7 @@
                                     customerDeliver: row.customerDeliver,
                                     time: row.time,
                                     date: row.date,
-                                    status: currentStatus.includes("đang chế biến") ? "cooking" : "pending",
+                                    status: assignedStatus,
                                     items: []
                                 };
                             }
@@ -888,19 +904,18 @@
 
                         let fetchedOrders = Object.values(ordersObj);
 
-                        // Cập nhật danh sách đơn chờ nấu
+                        // Cập nhật lại danh sách đơn trên bếp
                         state.orders = fetchedOrders;
                         renderKitchenOrders();
 
-                        // NẾU BẤM NÚT THỦ CÔNG: Đồng bộ toàn bộ đơn chờ nấu vào hộp thông báo để dễ bấm xem
                         if (isManual) {
                             state.notifications = [...state.orders]; 
                             renderNotificationCenter();
-                            alert(`Đã quét xong! Đang hiển thị ${state.orders.length} đơn chờ nấu lên hộp thông báo.`);
+                            alert(`Đã quét xong! Hiện có ${state.orders.length} đơn đang xử lý.`);
                         } else {
-                            // Kiểm tra nếu có đơn thực sự mới phát sinh khi quét ngầm
+                            // Kiểm tra đơn thực sự mới phát sinh để báo chuông
                             let newlyArrived = fetchedOrders.filter(o => !knownOrderIds.has(o.id));
-                            if (newlyArrived.length > 0) {
+                            if (newlyArrived.length > 0 && !isInitialLoad) {
                                 playNotificationSound();
                                 newlyArrived.forEach(o => {
                                     if (!state.notifications.some(n => n.id === o.id)) {
@@ -911,7 +926,6 @@
                             }
                         }
 
-                        // Lưu vết các ID
                         fetchedOrders.forEach(o => knownOrderIds.add(o.id));
                         isInitialLoad = false;
                     }
@@ -921,7 +935,6 @@
                     if (isManual) alert("Không thể kết nối lấy dữ liệu từ Google Sheets!");
                 });
         }
-
         function playNotificationSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
