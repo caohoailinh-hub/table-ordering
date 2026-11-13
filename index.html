@@ -36,6 +36,8 @@
             .no-print {
                 display: none !important;
             }
+
+
         }
     </style>
 </head>
@@ -117,12 +119,26 @@
 
     <!-- GIAO DIỆN NHÀ BẾP & QUẢN LÝ -->
     <div id="kitchenView" class="max-w-7xl mx-auto px-4 py-6 hidden">
-        <div class="flex justify-between items-center mb-6">
-            <h2 class="text-xl font-bold text-gray-800"><i class="fa-solid fa-clipboard-list mr-2 text-orange-500"></i> Quản Lý Bếp & Doanh Thu</h2>
-            <div class="flex space-x-2">
-                <button onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center shadow-sm">
-                    <i class="fa-solid fa-download mr-1"></i> Tải Báo Cáo Excel
-                </button>
+        
+<!-- KHUNG HỘP THÔNG BÁO ĐƠN MỚI (LUÔN HIỆN THỊ ĐỂ DỄ THEO DÕI) -->
+        <div id="notificationCenter" class="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-6 shadow-sm no-print">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="font-bold text-amber-800 text-sm flex items-center">
+                    <i class="fa-solid fa-bell text-orange-500 mr-2 animate-bounce"></i> 
+                    Hộp Thông Báo Đơn Hàng Mới (<span id="notifCount" class="bg-orange-600 text-white px-1.5 py-0.2 rounded-full text-xs ml-1">0</span>)
+                </h3>
+                <div class="flex items-center space-x-2">
+                    <button onclick="manualCheckNewOrders()" class="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center shadow-sm">
+                        <i class="fa-solid fa-sync mr-1.5"></i> Kiểm tra đơn mới
+                    </button>
+                    <button onclick="clearAllNotifications()" class="text-xs text-gray-500 hover:text-red-600 font-medium px-2 py-1">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Xóa hết
+                    </button>
+                </div>
+            </div>
+            <!-- Danh sách các đơn mới (Nếu trống sẽ hiện chữ hướng dẫn) -->
+            <div id="notifList" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <p class="text-xs text-amber-700 italic py-2 text-center">Chưa có thông báo đơn hàng mới. Bấm "Kiểm tra đơn mới" để quét dữ liệu từ Google Sheets.</p>
             </div>
         </div>
 
@@ -156,6 +172,9 @@
                     <button onclick="loadLiveRevenueReport()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center shadow-sm">
                         <i class="fa-solid fa-filter mr-1"></i> Xem Báo Cáo
                     </button>
+		<button onclick="exportOrdersToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center shadow-sm">
+                    <i class="fa-solid fa-download mr-1"></i> Tải Báo Cáo Excel
+                </button>
                 </div>
             </div>
 
@@ -354,6 +373,8 @@
     </div>
 
     <!-- LOGIC JAVASCRIPT -->
+    
+  <!-- LOGIC JAVASCRIPT HOÀN CHỈNH -->
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz_z3_T0acgQ2WOARxgSS9TrWCCtA1SVbC-E3J5OMrXKTB5gR_cicq7aCE1_cK2Q8DW4g/exec";
 
@@ -369,6 +390,8 @@
             cart: [],
             orders: [],
             orderHistory: [],
+            notifications: [],
+	    currentReportData: [], // <-- Thêm biến này để lưu dữ liệu đang hiển thị trên bảng báo cáo
             currentView: "customer",
             userRole: "customer"
         };
@@ -398,6 +421,7 @@
 
             applyRolePermissions();
             fetchMenuFromGoogleSheets();
+            startAutoCheckNewOrders();
         });
 
         function fetchMenuFromGoogleSheets() {
@@ -407,7 +431,6 @@
                 .then(response => response.json())
                 .then(result => {
                     if (result.status === "success" && result.data && result.data.length > 0) {
-                        // Đảm bảo mỗi món luôn có ID duy nhất (tránh lỗi trùng ID làm gộp 1 dòng trong giỏ hàng)
                         menuItems = result.data.map((item, idx) => ({
                             ...item,
                             id: item.id !== undefined && item.id !== "" ? `${item.id}_${idx}` : `dish_${idx}`,
@@ -453,6 +476,7 @@
                 document.getElementById("kitchenView").classList.remove("hidden");
                 state.currentView = "kitchen";
                 renderKitchenOrders();
+                checkForNewOrdersFromSheet(false); // Tự động nạp đơn ngay khi mở trang bếp
             } else if (state.userRole === 'admin') {
                 if (btnExcel) btnExcel.classList.remove("hidden");
                 if (btnViewToggle) btnViewToggle.classList.remove("hidden");
@@ -481,22 +505,22 @@
                 const card = document.createElement("div");
                 card.className = "bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col";
                 card.innerHTML = `
-                        <div class="h-40 overflow-hidden bg-gray-100 relative">
-                            <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
+                    <div class="h-40 overflow-hidden bg-gray-100 relative">
+                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-1">${item.name}</h3>
+                            <p class="text-xs text-gray-500 line-clamp-2 mb-3">${item.description}</p>
                         </div>
-                        <div class="p-4 flex-1 flex flex-col justify-between">
-                            <div>
-                                <h3 class="font-bold text-gray-800 mb-1">${item.name}</h3>
-                                <p class="text-xs text-gray-500 line-clamp-2 mb-3">${item.description}</p>
-                            </div>
-                            <div class="flex items-center justify-between pt-2 border-t border-gray-100">
-                                <span class="font-bold text-orange-600">${Number(item.price).toLocaleString()} đ</span>
-                                <button onclick="addToCart('${item.id}')" class="bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white p-2 rounded-xl transition text-sm">
-                                    <i class="fa-solid fa-plus"></i>
-                                </button>
-                            </div>
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+                            <span class="font-bold text-orange-600">${Number(item.price).toLocaleString()} đ</span>
+                            <button onclick="addToCart('${item.id}')" class="bg-orange-50 hover:bg-orange-500 text-orange-600 hover:text-white p-2 rounded-xl transition text-sm">
+                                <i class="fa-solid fa-plus"></i>
+                            </button>
                         </div>
-                    `;
+                    </div>
+                `;
                 grid.appendChild(card);
             });
         }
@@ -523,7 +547,7 @@
             document.getElementById("currentTableDisplay").innerText = state.currentTable;
         }
 
-        // --- THÊM MÓN VÀO GIỎ HÀNG (ĐÃ FIX LỖI CHỈ LƯU 1 DÒNG) ---
+        // --- GIỎ HÀNG ---
         function addToCart(itemId) {
             const item = menuItems.find(i => String(i.id) === String(itemId));
             if (!item) return;
@@ -565,16 +589,16 @@
                 const div = document.createElement("div");
                 div.className = "flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200";
                 div.innerHTML = `
-                        <div class="pr-2">
-                            <h4 class="font-bold text-sm text-gray-800">${cartItem.item.name}</h4>
-                            <span class="text-xs text-orange-600 font-medium">${Number(cartItem.item.price).toLocaleString()} đ × ${cartItem.quantity} = ${lineTotal.toLocaleString()} đ</span>
-                        </div>
-                        <div class="flex items-center space-x-2 shrink-0">
-                            <button onclick="changeQuantity(${index}, -1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">-</button>
-                            <span class="text-sm font-bold w-5 text-center">${cartItem.quantity}</span>
-                            <button onclick="changeQuantity(${index}, 1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">+</button>
-                        </div>
-                    `;
+                    <div class="pr-2">
+                        <h4 class="font-bold text-sm text-gray-800">${cartItem.item.name}</h4>
+                        <span class="text-xs text-orange-600 font-medium">${Number(cartItem.item.price).toLocaleString()} đ × ${cartItem.quantity} = ${lineTotal.toLocaleString()} đ</span>
+                    </div>
+                    <div class="flex items-center space-x-2 shrink-0">
+                        <button onclick="changeQuantity(${index}, -1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">-</button>
+                        <span class="text-sm font-bold w-5 text-center">${cartItem.quantity}</span>
+                        <button onclick="changeQuantity(${index}, 1)" class="w-7 h-7 bg-white border rounded-lg flex items-center justify-center text-xs font-bold hover:bg-gray-100">+</button>
+                    </div>
+                `;
                 container.appendChild(div);
             });
 
@@ -596,7 +620,7 @@
             else modal.classList.add("hidden");
         }
 
-        // --- ĐỒNG BỘ ĐƠN HÀNG LÊN GOOGLE SHEETS ---
+        // --- GỬI ĐƠN HÀNG LÊN GOOGLE SHEETS ---
         function sendOrderToGoogleSheet(orderData) {
             if (!GOOGLE_SCRIPT_URL) return;
             let itemsArray = orderData.items.map(i => ({
@@ -618,10 +642,10 @@
             formData.append("status", orderData.status === 'paid' ? 'Đặt hàng thành công' : 'Chờ xử lý');
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
-                .catch(err => console.error("Lỗi đồng bộ", err));
+                .catch(err => console.error("Lỗi đồng bộ Google Sheets:", err));
         }
 
-        // --- MỞ MODAL THANH TOÁN ---
+        // --- THANH TOÁN & QR ---
         function openPaymentQRModal() {
             if (state.cart.length === 0) {
                 alert("Giỏ hàng trống! Vui lòng chọn món trước.");
@@ -641,15 +665,8 @@
                 nameEl.focus();
                 return;
             }
-
-            if (!phoneInput) {
-                alert("Vui lòng nhập Số điện thoại trước khi đặt món!");
-                phoneEl.focus();
-                return;
-            }
-
-            if (!/^0\d{9,10}$/.test(phoneInput)) {
-                alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10-11 chữ số (bắt đầu bằng số 0).");
+            if (!phoneInput || !/^0\d{9,10}$/.test(phoneInput)) {
+                alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10-11 chữ số.");
                 phoneEl.focus();
                 return;
             }
@@ -678,19 +695,19 @@
                 let thanhTien = Number(cartItem.item.price) * cartItem.quantity;
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                        <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                        <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
-                        <td class="p-2.5 text-center">${cartItem.quantity}</td>
-                        <td class="p-2.5 text-right">${Number(cartItem.item.price).toLocaleString()}</td>
-                        <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
-                    `;
+                    <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                    <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
+                    <td class="p-2.5 text-center">${cartItem.quantity}</td>
+                    <td class="p-2.5 text-right">${Number(cartItem.item.price).toLocaleString()}</td>
+                    <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
+                `;
                 tableBody.appendChild(tr);
             });
 
             const btnConfirm = document.getElementById("btnConfirmPaymentAction");
             if (btnConfirm) btnConfirm.style.display = "block";
 
-            let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(state.currentTable)}%20${invoiceId}&accountName=CAO%20HOAI%20LINH`;
+            let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(state.currentTable)}%20${invoiceId}&accountName=KAOLIN%20DESSERT`;
             document.getElementById("vietQRImage").src = qrUrl;
 
             toggleCartModal(false);
@@ -728,7 +745,7 @@
             state.orderHistory.push({ ...paidOrder, status: "paid" });
             sendOrderToGoogleSheet({ ...paidOrder, status: "paid" });
 
-            alert(`Đặt hàng thành công cho đơn hàng: ${paidOrder.id}`);
+            alert(`Đặt hàng thành công cho đơn hàng ${paidOrder.id}!`);
 
             state.cart = [];
             updateCartUI();
@@ -736,7 +753,7 @@
             if (state.currentView === 'kitchen') renderKitchenOrders();
         }
 
-        // --- TRA CỨU & HIỂN THỊ HÓA ĐƠN CŨ KÈM MÃ QR ---
+        // --- TRA CỨU & IN LẠI HÓA ĐƠN ---
         function fetchAndPrintOldInvoice(inputId = 'navSearchOrderInput') {
             const inputEl = document.getElementById(inputId);
             let searchId = inputEl ? inputEl.value.trim() : "";
@@ -745,7 +762,7 @@
                 return;
             }
 
-            alert("Đang kết nối lấy dữ liệu...");
+            alert("Đang kết nối lấy dữ liệu từ Google Sheets...");
 
             fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
                 .then(response => response.json())
@@ -769,7 +786,7 @@
 
                         document.getElementById("payTableInfo").innerText = firstRow.table;
                         document.getElementById("payInvoiceId").innerText = firstRow.orderId;
-                        document.getElementById("payTime").innerText = firstRow.time;
+                        document.getElementById("payTime").innerText = firstRow.time + " - " + firstRow.date;
                         document.getElementById("payCustomerName").innerText = firstRow.customerName || "Khách lẻ";
                         document.getElementById("payCustomerPhone").innerText = firstRow.customerPhone || "Không có";
                         document.getElementById("payCustomerDeliver").innerText = firstRow.customerDeliver || "Tại quán";
@@ -783,16 +800,16 @@
                             let thanhTien = cartItem.item.price * cartItem.quantity;
                             const tr = document.createElement("tr");
                             tr.innerHTML = `
-                                    <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                                    <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
-                                    <td class="p-2.5 text-center">${cartItem.quantity}</td>
-                                    <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
-                                    <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
-                                `;
+                                <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                                <td class="p-2.5 font-medium text-gray-800">${cartItem.item.name}</td>
+                                <td class="p-2.5 text-center">${cartItem.quantity}</td>
+                                <td class="p-2.5 text-right">${cartItem.item.price.toLocaleString()}</td>
+                                <td class="p-2.5 text-right font-bold text-gray-800">${thanhTien.toLocaleString()}</td>
+                            `;
                             tableBody.appendChild(tr);
                         });
 
-                        let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(firstRow.table)}%20${firstRow.orderId}&accountName=CAO%20HOAI%20LINH`;
+                        let qrUrl = `https://img.vietqr.io/image/BIDV-3170076328-compact2.png?amount=${Math.round(total)}&addInfo=TT%20${encodeURIComponent(firstRow.table)}%20${firstRow.orderId}&accountName=KAOLIN%20DESSERT`;
                         document.getElementById("vietQRImage").src = qrUrl;
 
                         const btnConfirm = document.getElementById("btnConfirmPaymentAction");
@@ -800,16 +817,284 @@
 
                         document.getElementById("paymentModal").classList.remove("hidden");
                     } else {
-                        alert("Lỗi khi đọc dữ liệu: " + result.message);
+                        alert("Lỗi khi đọc dữ liệu từ Google Sheet: " + result.message);
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert("Không thể kết nối dữ liệu.");
+                    alert("Không thể kết nối đến Google Sheets!");
                 });
         }
 
-        // --- QUẢN LÝ THỰC ĐƠN ---
+        // --- HỘP THÔNG BÁO ĐƠN MỚI TRONG KITCHEN ---
+        let knownOrderIds = new Set();
+        let isInitialLoad = true;
+
+        function startAutoCheckNewOrders() {
+            setInterval(() => {
+                if (state.currentView !== 'kitchen') return;
+                checkForNewOrdersFromSheet(false);
+            }, 15000);
+        }
+
+        function manualCheckNewOrders() {
+            alert("Đang quét dữ liệu đơn hàng từ Google Sheets...");
+            checkForNewOrdersFromSheet(true);
+        }
+
+        function checkForNewOrdersFromSheet(isManual = false) {
+            fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        let allRows = result.data;
+                        if (!allRows || allRows.length === 0) {
+                            if (isManual) alert("Chưa có đơn hàng nào trên hệ thống.");
+                            return;
+                        }
+
+                        // Lấy danh sách các đơn đã hoàn thành từ localStorage
+                        let completedOrders = JSON.parse(localStorage.getItem('kaolin_completed_orders') || '[]');
+
+                        // Gom nhóm theo mã đơn, loại bỏ các đơn đã xong
+                        let ordersObj = {};
+                        allRows.forEach(row => {
+                            if (!row.orderId) return;
+
+                            // LỚP BẢO VỆ 2: Nếu nằm trong localStorage hoặc trạng thái trên Sheet chứa từ khóa hoàn thành/phục vụ thì bỏ qua
+                            let currentStatus = row.status ? row.status.trim().toLowerCase() : "";
+                            if (completedOrders.includes(row.orderId) || currentStatus.includes("hoàn thành") || currentStatus.includes("phục vụ") || currentStatus.includes("lên món")) {
+                                return; 
+                            }
+
+                            if (!ordersObj[row.orderId]) {
+                                ordersObj[row.orderId] = {
+                                    id: row.orderId,
+                                    table: row.table,
+                                    customerName: row.customerName,
+                                    customerPhone: row.customerPhone,
+                                    customerDeliver: row.customerDeliver,
+                                    time: row.time,
+                                    date: row.date,
+                                    status: currentStatus.includes("đang chế biến") ? "cooking" : "pending",
+                                    items: []
+                                };
+                            }
+                            ordersObj[row.orderId].items.push({
+                                item: { name: row.itemName, price: Number(row.price) },
+                                quantity: Number(row.quantity)
+                            });
+                        });
+
+                        let fetchedOrders = Object.values(ordersObj);
+
+                        let activeOrdersMap = {};
+                        state.orders.forEach(o => { activeOrdersMap[o.id] = o; });
+
+                        let updatedOrders = [];
+                        fetchedOrders.forEach(fOrd => {
+                            if (activeOrdersMap[fOrd.id]) {
+                                updatedOrders.push(activeOrdersMap[fOrd.id]);
+                            } else {
+                                updatedOrders.push(fOrd);
+                                if (!knownOrderIds.has(fOrd.id)) {
+                                    knownOrderIds.add(fOrd.id);
+                                    if (!isInitialLoad) {
+                                        playNotificationSound();
+                                        state.notifications.unshift(fOrd);
+                                    }
+                                }
+                            }
+                        });
+
+                        isInitialLoad = false;
+                        state.orders = updatedOrders;
+                        
+                        renderKitchenOrders();
+                        renderNotificationCenter();
+
+                        if (isManual) {
+                            alert(`Đã làm mới dữ liệu! Hiện có ${state.orders.length} đơn đang chờ xử lý.`);
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error("Lỗi kiểm tra đơn:", err);
+                    if (isManual) alert("Không thể kết nối lấy dữ liệu từ Google Sheets!");
+                });
+        }
+
+        function playNotificationSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {}
+        }
+
+        function renderNotificationCenter() {
+            const listEl = document.getElementById("notifList");
+            const countEl = document.getElementById("notifCount");
+            if (!listEl || !countEl) return;
+
+            if (!state.notifications || state.notifications.length === 0) {
+                countEl.innerText = "0";
+                listEl.innerHTML = `<p class="text-xs text-amber-700 italic py-2 text-center">Chưa có thông báo đơn hàng mới. Bấm "Kiểm tra đơn mới" để quét dữ liệu từ Google Sheets.</p>`;
+                return;
+            }
+
+            countEl.innerText = state.notifications.length;
+            listEl.innerHTML = "";
+
+            state.notifications.forEach((ord, idx) => {
+                let div = document.createElement("div");
+                div.className = "flex items-center justify-between bg-white p-2.5 rounded-xl border border-amber-200 shadow-xs hover:bg-amber-50/50 transition";
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="bg-orange-500 text-white font-bold text-xs p-2 rounded-lg"><i class="fa-solid fa-receipt"></i></span>
+                        <div>
+                            <p class="text-xs font-bold text-gray-800">${ord.table} - Đơn: <span class="text-orange-600">${ord.id}</span></p>
+                            <p class="text-[11px] text-gray-500">Khách: ${ord.customerName || 'Khách lẻ'} (${ord.customerDeliver || 'Tại quán'}) | Lúc: ${ord.time}</p>
+                        </div>
+                    </div>
+                    <button onclick="focusOnOrder('${ord.id}', ${idx})" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-xs flex items-center">
+                        <i class="fa-solid fa-eye mr-1"></i> Xem đơn
+                    </button>
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
+        function focusOnOrder(orderId, notifIndex) {
+            if (state.notifications) {
+                state.notifications.splice(notifIndex, 1);
+                renderNotificationCenter();
+            }
+
+            let cards = document.querySelectorAll("#kitchenOrdersList > div");
+            cards.forEach(card => {
+                if (card.innerText.includes(orderId)) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    card.classList.add("ring-4", "ring-orange-500", "transition-all", "duration-500");
+                    setTimeout(() => {
+                        card.classList.remove("ring-4", "ring-orange-500");
+                    }, 3000);
+                }
+            });
+        }
+
+        function clearAllNotifications() {
+            state.notifications = [];
+            renderNotificationCenter();
+        }
+
+        // --- BÁO CÁO DOANH THU TRỰC TIẾP ---
+        // --- 1. XEM BÁO CÁO DOANH THU TRỰC TIẾP & LƯU LẠI DỮ LIỆU ---
+        function loadLiveRevenueReport() {
+            const startDateStr = document.getElementById("reportStartDate").value; // dạng yyyy-mm-dd từ input date
+            const endDateStr = document.getElementById("reportEndDate").value;     // dạng yyyy-mm-dd từ input date
+
+            alert("Đang kết nối lấy dữ liệu báo cáo từ Google Sheets...");
+
+            fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.status === "success") {
+                        let allRows = result.data;
+                        
+                        if (allRows.length === 0) {
+                            alert("Chưa có dữ liệu đơn hàng nào trên Google Sheets!");
+                            return;
+                        }
+
+                        // Lọc dữ liệu theo khoảng thời gian chọn
+                        let filteredRows = allRows.filter(r => {
+                            if (!r.date) return false;
+                            let parts = r.date.split("/"); // DD/MM/YYYY từ Sheet
+                            if (parts.length !== 3) return true;
+                            let orderDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
+
+                            let isValid = true;
+                            if (startDateStr) {
+                                let startDateObj = new Date(startDateStr);
+                                if (orderDateObj < startDateObj) isValid = false;
+                            }
+                            if (endDateStr) {
+                                let endDateObj = new Date(endDateStr);
+                                endDateObj.setHours(23, 59, 59, 999);
+                                if (orderDateObj > endDateObj) isValid = false;
+                            }
+                            return isValid;
+                        });
+
+                        const tbody = document.getElementById("liveReportTableBody");
+                        tbody.innerHTML = "";
+
+                        if (filteredRows.length === 0) {
+                            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">Không có dữ liệu trong khoảng thời gian đã chọn.</td></tr>`;
+                            document.getElementById("repTotalOrders").innerText = "0";
+                            document.getElementById("repTotalQty").innerText = "0";
+                            document.getElementById("repTotalRevenue").innerText = "0 đ";
+                            state.currentReportData = []; // Xóa dữ liệu cũ nếu không có kết quả
+                            return;
+                        }
+
+                        // LƯU LẠI DỮ LIỆU ĐÃ LỌC VÀO BIẾN TOÀN CỤC ĐỂ DÙNG CHO XUẤT EXCEL
+                        state.currentReportData = filteredRows;
+
+                        let totalRevenue = 0;
+                        let totalQty = 0;
+                        let uniqueOrders = new Set();
+
+                        filteredRows.forEach((r, index) => {
+                            let qty = Number(r.quantity) || 0;
+                            let price = Number(r.price) || 0;
+                            let thanhTien = Number(r.thanhTien) || (qty * price);
+
+                            totalRevenue += thanhTien;
+                            totalQty += qty;
+                            uniqueOrders.add(r.orderId);
+
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
+                                <td class="p-2.5">${r.date}</td>
+                                <td class="p-2.5">${r.time}</td>
+                                <td class="p-2.5 font-bold text-gray-700">${r.orderId}</td>
+                                <td class="p-2.5">${r.table}</td>
+                                <td class="p-2.5">${r.customerName || "Khách lẻ"}</td>
+                                <td class="p-2.5 font-medium text-gray-800">${r.itemName}</td>
+                                <td class="p-2.5 text-center">${qty}</td>
+                                <td class="p-2.5 text-right">${price.toLocaleString()} đ</td>
+                                <td class="p-2.5 text-right font-bold text-orange-600">${thanhTien.toLocaleString()} đ</td>
+                                <td class="p-2.5 text-gray-600">${r.customerDeliver || "Tại quán"}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+
+                        document.getElementById("repTotalOrders").innerText = uniqueOrders.size;
+                        document.getElementById("repTotalQty").innerText = totalQty;
+                        document.getElementById("repTotalRevenue").innerText = totalRevenue.toLocaleString() + " đ";
+
+                        alert(`Đã tải thành công báo cáo với ${filteredRows.length} dòng dữ liệu!`);
+                    } else {
+                        alert("Lỗi đọc dữ liệu: " + result.message);
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Không thể kết nối đến Google Sheets!");
+                });
+        }
+
+        // --- QUẢN LÝ THỰC ĐƠN & BẾP ---
         function toggleMenuManagerModal(show) {
             const modal = document.getElementById("menuManagerModal");
             if (show) {
@@ -823,27 +1108,25 @@
         function renderManageDishList() {
             const container = document.getElementById("manageDishList");
             container.innerHTML = "";
-
             if (menuItems.length === 0) {
                 container.innerHTML = `<p class="text-xs text-gray-400 text-center py-4">Chưa có món ăn nào trong thực đơn.</p>`;
                 return;
             }
-
             menuItems.forEach((item) => {
                 const div = document.createElement("div");
                 div.className = "flex items-center justify-between bg-white p-3 rounded-xl border border-gray-200 shadow-sm";
                 div.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-lg">
-                            <div>
-                                <h5 class="font-bold text-sm text-gray-800">${item.name}</h5>
-                                <span class="text-xs text-orange-600 font-medium">${Number(item.price).toLocaleString()} đ</span>
-                            </div>
+                    <div class="flex items-center space-x-3">
+                        <img src="${item.image}" alt="${item.name}" class="w-10 h-10 object-cover rounded-lg">
+                        <div>
+                            <h5 class="font-bold text-sm text-gray-800">${item.name}</h5>
+                            <span class="text-xs text-orange-600 font-medium">${Number(item.price).toLocaleString()} đ</span>
                         </div>
-                        <button onclick="deleteDish('${item.rawId}')" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
-                            <i class="fa-solid fa-trash mr-1"></i> Xóa
-                        </button>
-                    `;
+                    </div>
+                    <button onclick="deleteDish('${item.rawId}')" class="bg-red-50 hover:bg-red-500 text-red-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                        <i class="fa-solid fa-trash mr-1"></i> Xóa
+                    </button>
+                `;
                 container.appendChild(div);
             });
         }
@@ -859,11 +1142,7 @@
                 alert("Vui lòng nhập tên món và giá tiền hợp lệ!");
                 return;
             }
-
-            if (!image) {
-                image = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500";
-            }
-
+            if (!image) image = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500";
             const newId = menuItems.length > 0 ? Math.max(...menuItems.map(i => Number(i.rawId) || 0)) + 1 : 1;
 
             const formData = new URLSearchParams();
@@ -877,14 +1156,12 @@
 
             fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
                 .then(() => {
-                    alert("Đã gửi yêu cầu thêm món mới.");
+                    alert("Đã gửi yêu cầu thêm món mới lên Google Sheets!");
                     menuItems.push({ id: `${newId}_${menuItems.length}`, rawId: newId, name, category, price, image, description });
-
                     document.getElementById("newDishName").value = "";
                     document.getElementById("newDishPrice").value = "";
                     document.getElementById("newDishImage").value = "";
                     document.getElementById("newDishDesc").value = "";
-
                     renderManageDishList();
                     renderMenu();
                 })
@@ -899,7 +1176,7 @@
 
                 fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
                     .then(() => {
-                        alert("Đã xóa món.");
+                        alert("Đã xóa món khỏi Google Sheets!");
                         menuItems = menuItems.filter(i => String(i.rawId) !== String(rawId));
                         renderManageDishList();
                         renderMenu();
@@ -908,82 +1185,34 @@
             }
         }
 
-        // --- XUẤT EXCEL ---
+        // --- 2. XUẤT EXCEL LẤY TRỰC TIẾP TỪ DỮ LIỆU ĐÃ XEM TRÊN BẢNG ---
         function exportOrdersToExcel() {
-            alert("Đang kết nối lấy toàn bộ dữ liệu để lập báo cáo...");
+            if (!state.currentReportData || state.currentReportData.length === 0) {
+                alert("Chưa có dữ liệu báo cáo hiển thị trên bảng! Vui lòng chọn khoảng thời gian và bấm 'Xem Báo Cáo' trước khi xuất Excel.");
+                return;
+            }
 
-            fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
-                .then(response => response.json())
-                .then(result => {
-                    if (result.status === "success") {
-                        let allRows = result.data;
+            const excelData = state.currentReportData.map(r => ({
+                "Ngày đặt": r.date,
+                "Thời gian": r.time,
+                "Mã Đơn Hàng": r.orderId,
+                "Bàn": r.table,
+                "Tên Khách": r.customerName || "Khách lẻ",
+                "Số Điện Thoại": r.customerPhone || "",
+                "Tên Món": r.itemName,
+                "Số Lượng": Number(r.quantity) || 0,
+                "Đơn Giá (đ)": Number(r.price) || 0,
+                "Thành Tiền (đ)": (Number(r.quantity) || 0) * (Number(r.price) || 0),
+                "Trạng Thái": r.status || "",
+                "Giao Đến": r.customerDeliver || "Tại quán"
+            }));
 
-                        if (allRows.length === 0) {
-                            alert("Chưa có dữ liệu đơn hàng nào.");
-                            return;
-                        }
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDoanhThu");
+            XLSX.writeFile(workbook, `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
 
-                        let fromDateStr = prompt("Nhập từ ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
-                        if (fromDateStr === null) return;
-
-                        let toDateStr = prompt("Nhập đến ngày (Định dạng DD/MM/YYYY) - Bỏ trống nếu lấy tất cả:", "");
-                        if (toDateStr === null) return;
-
-                        let filteredRows = allRows;
-                        if (fromDateStr.trim() !== "" || toDateStr.trim() !== "") {
-                            filteredRows = allRows.filter(r => {
-                                let orderDateParts = r.date.split("/");
-                                if (orderDateParts.length !== 3) return true;
-                                let orderDateObj = new Date(orderDateParts[2], orderDateParts[1] - 1, orderDateParts[0]);
-
-                                let isValid = true;
-                                if (fromDateStr.trim() !== "") {
-                                    let fromParts = fromDateStr.trim().split("/");
-                                    let fromDateObj = new Date(fromParts[2], fromParts[1] - 1, fromParts[0]);
-                                    if (orderDateObj < fromDateObj) isValid = false;
-                                }
-                                if (toDateStr.trim() !== "") {
-                                    let toParts = toDateStr.trim().split("/");
-                                    let toDateObj = new Date(toParts[2], toParts[1] - 1, toParts[0]);
-                                    if (orderDateObj > toDateObj) isValid = false;
-                                }
-                                return isValid;
-                            });
-                        }
-
-                        if (filteredRows.length === 0) {
-                            alert("Không có đơn hàng nào trong khoảng thời gian đã chọn!");
-                            return;
-                        }
-
-                        const excelData = [];
-                        filteredRows.forEach(r => {
-                            excelData.push({
-                                "Ngày đặt": r.date,
-                                "Thời gian": r.time,
-                                "Mã Đơn Hàng": r.orderId,
-                                "Bàn": r.table,
-                                "Tên Khách": r.customerName || "Khách lẻ",
-                                "Số Điện Thoại": r.customerPhone || "",
-                                "Tên Món": r.itemName,
-                                "Số Lượng": r.quantity,
-                                "Đơn Giá (đ)": r.price,
-                                "Thành Tiền (đ)": r.price * r.quantity,
-                                "Trạng Thái": r.status
-                            });
-                        });
-
-                        const worksheet = XLSX.utils.json_to_sheet(excelData);
-                        const workbook = XLSX.utils.book_new();
-                        XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDoanhThu");
-                        XLSX.writeFile(workbook, `Bao_Cao_Doanh_Thu_${new Date().toISOString().slice(0, 10)}.xlsx`);
-
-                        alert(`Xuất báo cáo thành công ${filteredRows.length} dòng dữ liệu!`);
-                    } else {
-                        alert("Lỗi đọc dữ liệu: " + result.message);
-                    }
-                })
-                .catch(err => alert("Không thể kết nối dữ liệu: " + err));
+            alert(`Đã xuất file Excel thành công với ${excelData.length} dòng dữ liệu từ bảng báo cáo!`);
         }
 
         function toggleView() {
@@ -999,6 +1228,7 @@
                 cartBtn.classList.add("hidden");
                 btn.innerHTML = `<i class="fa-solid fa-utensils mr-1"></i> Xem Menu`;
                 renderKitchenOrders();
+                checkForNewOrdersFromSheet(false);
             } else {
                 state.currentView = "customer";
                 kitchenView.classList.add("hidden");
@@ -1018,13 +1248,8 @@
                 if (order.status === 'pending') pendingCount++;
                 if (order.status === 'cooking') cookingCount++;
                 if (order.status === 'served') servedCount++;
-            });
-
-            state.orderHistory.forEach(order => {
-                if (order.status === 'paid') {
-                    paidCount++;
-                    totalRevenue += order.total;
-                }
+                paidCount++;
+                totalRevenue += order.items.reduce((s, i) => s + (i.item.price * i.quantity), 0);
             });
 
             document.getElementById("statPending").innerText = pendingCount;
@@ -1056,225 +1281,63 @@
                 let itemsHtml = order.items.map(i => `<li class="text-sm text-gray-600 flex justify-between"><span>${i.item.name}</span> <span class="font-bold">x${i.quantity}</span></li>`).join('');
 
                 card.innerHTML = `
-                        <div>
-                            <div class="flex justify-between items-center mb-2">
-                                <span class="font-bold text-gray-800">${order.table} (${order.id})</span>
-                                ${statusBadge}
-                            </div>
-                            <div class="text-xs text-gray-500 mb-3 space-y-0.5">
-                                <div>Thời gian: ${order.time}</div>
-                                <div>Khách: <strong class="text-gray-700">${order.customerName}</strong> (${order.customerPhone})</div>
-                                <div>Giao đến: <strong class="text-gray-700">${order.customerDeliver}</strong></div>
-                            </div>
-                            <ul class="space-y-1 mb-4 border-t border-b border-gray-100 py-3">${itemsHtml}</ul>
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-bold text-gray-800">${order.table} (${order.id})</span>
+                            ${statusBadge}
                         </div>
-                        <div>${actionBtn}</div>
-                    `;
+                        <div class="text-xs text-gray-500 mb-3 space-y-0.5">
+                            <div>Thời gian: ${order.time}</div>
+                            <div>Khách: <strong class="text-gray-700">${order.customerName || 'Khách lẻ'}</strong> (${order.customerPhone || ''})</div>
+                            <div>Giao đến: <strong class="text-gray-700">${order.customerDeliver || 'Tại quán'}</strong></div>
+                        </div>
+                        <ul class="space-y-1 mb-4 border-t border-b border-gray-100 py-3">${itemsHtml}</ul>
+                    </div>
+                    <div>${actionBtn}</div>
+                `;
                 container.appendChild(card);
             });
         }
 
+        // --- HÀM CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG VÀ ĐỒNG BỘ GOOGLE SHEETS ---
         function updateOrderStatus(index, newStatus) {
-            if (newStatus === 'done') { state.orders.splice(index, 1); }
-            else { state.orders[index].status = newStatus; }
+            let order = state.orders[index];
+            if (!order) return;
+
+            let statusText = "Chờ xử lý";
+            if (newStatus === 'cooking') {
+                statusText = "Đang chế biến";
+                order.status = 'cooking';
+            } else if (newStatus === 'served') {
+                statusText = "Đã lên món";
+                order.status = 'served';
+            } else if (newStatus === 'done') {
+                statusText = "Đã hoàn thành";
+                
+                // LỚP BẢO VỆ 1: Lưu ngay mã đơn vào localStorage để chặn load lại hiển thị
+                let completedOrders = JSON.parse(localStorage.getItem('kaolin_completed_orders') || '[]');
+                if (!completedOrders.includes(order.id)) {
+                    completedOrders.push(order.id);
+                    localStorage.setItem('kaolin_completed_orders', JSON.stringify(completedOrders));
+                }
+
+                // Xóa khỏi danh sách đang hiển thị trên bếp
+                state.orders.splice(index, 1);
+            }
+
+            // Gửi yêu cầu ngầm cập nhật trạng thái lên Google Sheets
+            if (GOOGLE_SCRIPT_URL) {
+                const formData = new URLSearchParams();
+                formData.append("action", "updateStatus");
+                formData.append("orderId", order.id);
+                formData.append("status", statusText);
+
+                fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", body: formData })
+                    .catch(err => console.error("Lỗi đồng bộ trạng thái:", err));
+            }
+
             renderKitchenOrders();
         }
-
-
-// --- XEM BÁO CÁO DOANH THU TRỰC TIẾP TRÊN GIAO DIỆN ---
-        function loadLiveRevenueReport() {
-            const startDateStr = document.getElementById("reportStartDate").value; // yyyy-mm-dd
-            const endDateStr = document.getElementById("reportEndDate").value;     // yyyy-mm-dd
-
-            alert("Đang kết nối lấy dữ liệu báo cáo từ Google Sheets...");
-
-            fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
-            .then(response => response.json())
-            .then(result => {
-                if (result.status === "success") {
-                    let allRows = result.data;
-                    
-                    if (allRows.length === 0) {
-                        alert("Chưa có dữ liệu đơn hàng nào trên Google Sheets!");
-                        return;
-                    }
-
-                    // Lọc dữ liệu theo khoảng thời gian nếu người dùng chọn
-                    let filteredRows = allRows.filter(r => {
-                        if (!r.date) return false;
-                        let parts = r.date.split("/"); // Định dạng DD/MM/YYYY từ Sheet
-                        if (parts.length !== 3) return true;
-                        let orderDateObj = new Date(parts[2], parts[1] - 1, parts[0]);
-
-                        let isValid = true;
-                        if (startDateStr) {
-                            let startDateObj = new Date(startDateStr);
-                            if (orderDateObj < startDateObj) isValid = false;
-                        }
-                        if (endDateStr) {
-                            let endDateObj = new Date(endDateStr);
-                            endDateObj.setHours(23, 59, 59, 999);
-                            if (orderDateObj > endDateObj) isValid = false;
-                        }
-                        return isValid;
-                    });
-
-                    const tbody = document.getElementById("liveReportTableBody");
-                    tbody.innerHTML = "";
-
-                    if (filteredRows.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">Không có dữ liệu trong khoảng thời gian đã chọn.</td></tr>`;
-                        document.getElementById("repTotalOrders").innerText = "0";
-                        document.getElementById("repTotalQty").innerText = "0";
-                        document.getElementById("repTotalRevenue").innerText = "0 đ";
-                        return;
-                    }
-
-                    let totalRevenue = 0;
-                    let totalQty = 0;
-                    let uniqueOrders = new Set();
-
-                    filteredRows.forEach((r, index) => {
-                        let qty = Number(r.quantity) || 0;
-                        let price = Number(r.price) || 0;
-                        let thanhTien = Number(r.thanhTien) || (qty * price);
-
-                        totalRevenue += thanhTien;
-                        totalQty += qty;
-                        uniqueOrders.add(r.orderId);
-
-                        const tr = document.createElement("tr");
-                        tr.innerHTML = `
-                            <td class="p-2.5 text-center text-gray-500">${index + 1}</td>
-                            <td class="p-2.5">${r.date}</td>
-                            <td class="p-2.5">${r.time}</td>
-                            <td class="p-2.5 font-bold text-gray-700">${r.orderId}</td>
-                            <td class="p-2.5">${r.table}</td>
-                            <td class="p-2.5">${r.customerName || "Khách lẻ"}</td>
-                            <td class="p-2.5 font-medium text-gray-800">${r.itemName}</td>
-                            <td class="p-2.5 text-center">${qty}</td>
-                            <td class="p-2.5 text-right">${price.toLocaleString()} đ</td>
-                            <td class="p-2.5 text-right font-bold text-orange-600">${thanhTien.toLocaleString()} đ</td>
-                            <td class="p-2.5 text-gray-600">${r.customerDeliver || "Tại quán"}</td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
-
-                    // Cập nhật số liệu tổng kết lên giao diện
-                    document.getElementById("repTotalOrders").innerText = uniqueOrders.size;
-                    document.getElementById("repTotalQty").innerText = totalQty;
-                    document.getElementById("repTotalRevenue").innerText = totalRevenue.toLocaleString() + " đ";
-
-                    alert(`Đã tải thành công báo cáo với ${filteredRows.length} dòng dữ liệu!`);
-                } else {
-                    alert("Lỗi đọc dữ liệu: " + result.message);
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Không thể kết nối đến Google Sheets!");
-            });
-        }
-
-
-
-
-// --- TÍNH NĂNG TỰ ĐỘNG KIỂM TRA ĐƠN HÀNG MỚI (POLLING) ---
-        let lastKnownOrderCount = 0; // Biến lưu số lượng đơn cũ để đối chiếu
-        let isFirstCheck = true;     // Tránh báo động giả ở lần tải trang đầu tiên
-
-        function startAutoCheckNewOrders() {
-            // Kiểm tra định kỳ mỗi 15 giây (15000ms)
-            setInterval(() => {
-                // Chỉ chạy khi đang ở giao diện nhà bếp/quản lý
-                if (state.currentView !== 'kitchen') return;
-
-                fetch(`${GOOGLE_SCRIPT_URL}?target=orders`)
-                .then(response => response.json())
-                .then(result => {
-                    if (result.status === "success") {
-                        let allRows = result.data;
-                        
-                        // Lọc đếm số lượng mã đơn hàng độc lập (orderId)
-                        let uniqueOrdersMap = {};
-                        allRows.forEach(r => { if (r.orderId) uniqueOrdersMap[r.orderId] = true; });
-                        let currentOrderCount = Object.keys(uniqueOrdersMap).length;
-
-                        if (isFirstCheck) {
-                            lastKnownOrderCount = currentOrderCount;
-                            isFirstCheck = false;
-                            return;
-                        }
-
-                        // Nếu phát hiện số lượng đơn hàng tăng lên -> Có đơn mới!
-                        if (currentOrderCount > lastKnownOrderCount) {
-                            let newOrdersCount = currentOrderCount - lastKnownOrderCount;
-                            playNotificationSound(); // Phát âm thanh báo động
-                            showNewOrderAlert(newOrdersCount); // Hiển thị thông báo màn hình
-                            
-                            // Cập nhật lại số lượng mới và tải lại danh sách hiển thị
-                            lastKnownOrderCount = currentOrderCount;
-                            // Gọi lại hàm cập nhật danh sách đơn hàng lên giao diện bếp nếu có
-                            if (typeof renderKitchenOrdersFromSheet === 'function') {
-                                renderKitchenOrdersFromSheet();
-                            } else {
-                                location.reload(); // Hoặc tải lại trang nhẹ nhàng để cập nhật đơn
-                            }
-                        }
-                    }
-                })
-                .catch(err => console.error("Lỗi tự động kiểm tra đơn mới:", err));
-            }, 15000); // 15 giây kiểm tra 1 lần
-        }
-
-        // Hàm phát âm thanh cảnh báo (Sử dụng Web Audio API tích hợp sẵn, không cần file nhạc ngoài)
-        function playNotificationSound() {
-            try {
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const oscillator = audioCtx.createOscillator();
-                const gainNode = audioCtx.createGain();
-                
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Âm bíp cao
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.3); // Kéo dài 0.3 giây
-            } catch (e) {
-                console.log("Trình duyệt chặn âm thanh tự động:", e);
-            }
-        }
-
-        // Hàm hiển thị hộp thoại thông báo nổi
-        function showNewOrderAlert(count) {
-            // Tạo một thẻ div thông báo nổi góc màn hình
-            const alertBox = document.createElement("div");
-            alertBox.className = "fixed bottom-5 right-5 bg-orange-600 text-white px-5 py-4 rounded-2xl shadow-2xl z-50 flex items-center space-x-3 animate-bounce";
-            alertBox.innerHTML = `
-                <i class="fa-solid fa-bell text-2xl animate-spin"></i>
-                <div>
-                    <h4 class="font-bold text-sm">Có ${count} đơn hàng mới!</h4>
-                    <p class="text-xs opacity-90">Vui lòng kiểm tra danh sách đơn chờ nấu.</p>
-                </div>
-            `;
-            document.body.appendChild(alertBox);
-
-            // Tự động ẩn sau 6 giây
-            setTimeout(() => {
-                alertBox.remove();
-            }, 6000);
-        }
-
-        // Kích hoạt tính năng quét ngầm khi trang được tải xong và đang ở chế độ bếp
-        document.addEventListener("DOMContentLoaded", () => {
-            startAutoCheckNewOrders();
-        });
-
-
-
     </script>
 </body>
 </html>
