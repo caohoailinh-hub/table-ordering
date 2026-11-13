@@ -422,7 +422,7 @@
             applyRolePermissions();
             fetchMenuFromGoogleSheets();
             startAutoCheckNewOrders();
-			startAutoTestNotificationSync(); // <-- Thêm hàm đồng bộ thông báo cho điện thoại ở đây
+			
         });
 
         function fetchMenuFromGoogleSheets() {
@@ -1339,21 +1339,7 @@
 
             renderKitchenOrders();
         }
-		// --- HÀM ĐỒNG BỘ ĐƠN CHỜ NẤU VÀO HỘP THÔNG BÁO CHO ĐIỆN THOẠI ---
-        function startAutoTestNotificationSync() {
-            startAutoCheckNewOrders();
-
-            // Nếu đang ở giao diện bếp, tự động đồng bộ các đơn chờ nấu vào hộp thông báo nếu hộp thông báo đang trống
-            setTimeout(() => {
-                if (state.currentView === 'kitchen' && state.orders && state.orders.length > 0) {
-                    if (!state.notifications || state.notifications.length === 0) {
-                        // Lấy tất cả các đơn đang chờ nấu bỏ vào hộp thông báo để hiển thị nút "Xem đơn"
-                        state.notifications = [...state.orders];
-                        renderNotificationCenter();
-                    }
-                }
-            }, 1000);
-        }
+		
     </script>
 </body>
 </html>
